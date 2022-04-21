@@ -71,9 +71,6 @@ def plot(X, Y=None, xlabel=None, ylabel=None, legend=None, xlim=None,
             axes.plot(y, fmt)
     set_axes(axes, xlabel, ylabel, xlim, ylim, xscale, yscale, legend)
 
-# 由于将频繁地进行运行时间的基准测试，所以我们定义一个计时器：
-# @save
-
 
 class Timer:
     """记录多次运行时间"""
@@ -187,10 +184,6 @@ def show_trace_2d(f, results):  # @save
     plt.ylabel('x2')
 
 
-DATA_HUB = dict()
-DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/'
-
-
 def download(name, cache_dir=os.path.join('..', 'data')):
     """下载一个DATA_HUB中的文件，返回本地文件名
     Defined in :numref:`sec_kaggle_house`"""
@@ -236,17 +229,6 @@ def download_all():
     Defined in :numref:`sec_kaggle_house`"""
     for name in DATA_HUB:
         download(name)
-
-
-DATA_HUB['kaggle_house_train'] = (
-    DATA_URL + 'kaggle_house_pred_train.csv',
-    '585e9cc93e70b39160e7921475f9bcd7d31219ce')
-
-DATA_HUB['kaggle_house_test'] = (
-    DATA_URL + 'kaggle_house_pred_test.csv',
-    'fa19780a7b011d9b009e8bff8e99922a8ee2eb90')
-DATA_HUB['airfoil'] = (DATA_URL + 'airfoil_self_noise.dat',
-                       '76e5be1548fd8222e5074cf0faae75edff8cf93f')
 
 
 def load_array(data_arrays, batch_size, is_train=True):
@@ -349,17 +331,6 @@ class Accumulator:
         return self.data[idx]
 
 
-numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
-size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
-reshape = lambda x, *args, **kwargs: x.reshape(*args, **kwargs)
-to = lambda x, *args, **kwargs: x.to(*args, **kwargs)
-reduce_sum = lambda x, *args, **kwargs: x.sum(*args, **kwargs)
-argmax = lambda x, *args, **kwargs: x.argmax(*args, **kwargs)
-astype = lambda x, *args, **kwargs: x.type(*args, **kwargs)
-transpose = lambda x, *args, **kwargs: x.t(*args, **kwargs)
-reduce_mean = lambda x, *args, **kwargs: x.mean(*args, **kwargs)
-
-
 def accuracy(y_hat, y):
     """计算预测正确的数量
     Defined in :numref:`sec_softmax_scratch`"""
@@ -436,3 +407,28 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):  # @save
             y = y.to(device)
             metric.add(accuracy(net(X), y), y.numel())
     return metric[0] / metric[1]
+
+
+# CONSTANT AND LAMBDA EXPRESSIONS
+numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
+size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
+reshape = lambda x, *args, **kwargs: x.reshape(*args, **kwargs)
+to = lambda x, *args, **kwargs: x.to(*args, **kwargs)
+reduce_sum = lambda x, *args, **kwargs: x.sum(*args, **kwargs)
+argmax = lambda x, *args, **kwargs: x.argmax(*args, **kwargs)
+astype = lambda x, *args, **kwargs: x.type(*args, **kwargs)
+transpose = lambda x, *args, **kwargs: x.t(*args, **kwargs)
+reduce_mean = lambda x, *args, **kwargs: x.mean(*args, **kwargs)
+DATA_HUB = dict()
+DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/'
+DATA_HUB['kaggle_house_train'] = (
+    DATA_URL + 'kaggle_house_pred_train.csv',
+    '585e9cc93e70b39160e7921475f9bcd7d31219ce')
+
+DATA_HUB['kaggle_house_test'] = (
+    DATA_URL + 'kaggle_house_pred_test.csv',
+    'fa19780a7b011d9b009e8bff8e99922a8ee2eb90')
+DATA_HUB['airfoil'] = (DATA_URL + 'airfoil_self_noise.dat',
+                       '76e5be1548fd8222e5074cf0faae75edff8cf93f')
+DATA_HUB['time_machine'] = (DATA_URL + 'timemachine.txt',
+                            '090b5e7e70c295757f55df93cb0a180b9691891a')
