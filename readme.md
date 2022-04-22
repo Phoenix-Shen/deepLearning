@@ -4,7 +4,7 @@
 
 Dive Into Deep Learning 的学习代码以及笔记
 
-# 包含内容
+## 包含内容
 
 1. 数学基础知识
    - 梯度计算
@@ -42,5 +42,16 @@ Dive Into Deep Learning 的学习代码以及笔记
    - 随机梯度下降
    - 动量法
 7. RNN
+
    - 序列模型
    - 文本预处理
+
+   - 暂时丢掉，目前不需要 RNN 来处理相关数据
+
+8. Attention 机制
+
+## requirements
+
+python=3.9
+torch=1.9 或者 1.10
+opencv-python
