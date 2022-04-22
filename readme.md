@@ -1,8 +1,10 @@
 # Dive Into Deep Learning
 
-[原书地址](https://zh-v2.d2l.ai/)
+## 介绍
 
-Dive Into Deep Learning 的学习代码以及笔记
+[原书地址在此](https://zh-v2.d2l.ai/)
+
+*Dive Into Deep Learning* 的学习代码以及笔记，原本是在我的强化学习仓库里头的，结果发现太多了，便独立出来
 
 ## 包含内容
 
@@ -13,7 +15,7 @@ Dive Into Deep Learning 的学习代码以及笔记
    - 线性回归
    - Softmax 回归
 3. MLP
-   - dropout
+   - 暂退法
    - 模型创建
    - 多层感知机
    - 数值稳定性
@@ -42,16 +44,8 @@ Dive Into Deep Learning 的学习代码以及笔记
    - 随机梯度下降
    - 动量法
 7. RNN
-
    - 序列模型
    - 文本预处理
-
    - 暂时丢掉，目前不需要 RNN 来处理相关数据
 
 8. Attention 机制
-
-## requirements
-
-python=3.9
-torch=1.9 或者 1.10
-opencv-python

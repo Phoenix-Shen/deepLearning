@@ -492,38 +492,39 @@ def load_corpus_time_machine(max_tokens=-1):
     return corpus, vocab
 
 
-def seq_data_iter_random(corpus:list[str],batch_size:int,num_steps:int):
+def seq_data_iter_random(corpus: list[str], batch_size: int, num_steps: int):
     # 从随机偏移量开始对序列进行分区，随机范围包括numsteps-1
-    corpus=corpus[random.randint(0,num_steps-1):]
+    corpus = corpus[random.randint(0, num_steps-1):]
     # 减去一，因为要选取标签
-    num_subseqs=(len(corpus)-1)//num_steps
+    num_subseqs = (len(corpus)-1)//num_steps
     # 长度为num_steps的子序列的起始索引
-    initial_indices=list(range(0,num_steps*num_subseqs,num_steps))
+    initial_indices = list(range(0, num_steps*num_subseqs, num_steps))
     # 在随机抽样的迭代过程中，来自两个相邻的、随机的、小批量的子序列不一定在原始序列上相邻
     random.shuffle(initial_indices)
 
-    def data(pos:int):
+    def data(pos: int):
         return corpus[pos:pos+num_steps]
-    
-    num_batches=num_subseqs//batch_size
-    for i in range(0,batch_size*num_batches,batch_size):
-        initial_indices_per_batch=initial_indices[i:i+batch_size]
-        X=[data(j) for j in initial_indices_per_batch]
-        Y=[data(j+1) for j in initial_indices_per_batch]
-        yield torch.tensor(X),torch.tensor(Y)
 
-def seq_data_iter_sequential(corpus,batch_size,num_steps):
-    offset  = random.randint(0,num_steps)
+    num_batches = num_subseqs//batch_size
+    for i in range(0, batch_size*num_batches, batch_size):
+        initial_indices_per_batch = initial_indices[i:i+batch_size]
+        X = [data(j) for j in initial_indices_per_batch]
+        Y = [data(j+1) for j in initial_indices_per_batch]
+        yield torch.tensor(X), torch.tensor(Y)
 
-    num_tokens=((len(corpus)-offset-1)//batch_size)*batch_size
-    Xs=torch.tensor(corpus[offset:offset+num_tokens])
-    Ys=torch.tensor(corpus[offset+1:offset+num_tokens+1])
-    Xs,Ys=Xs.reshape(batch_size,-1),Ys.reshape(batch_size,-1)
-    num_batches=Xs.shape[1]//num_steps
-    for i in range(0,num_steps*num_batches,num_steps):
-        X=Xs[:,i:i+num_steps]
-        Y=Ys[:,i:i+num_steps]
-        yield X,Y
+
+def seq_data_iter_sequential(corpus, batch_size, num_steps):
+    offset = random.randint(0, num_steps)
+
+    num_tokens = ((len(corpus)-offset-1)//batch_size)*batch_size
+    Xs = torch.tensor(corpus[offset:offset+num_tokens])
+    Ys = torch.tensor(corpus[offset+1:offset+num_tokens+1])
+    Xs, Ys = Xs.reshape(batch_size, -1), Ys.reshape(batch_size, -1)
+    num_batches = Xs.shape[1]//num_steps
+    for i in range(0, num_steps*num_batches, num_steps):
+        X = Xs[:, i:i+num_steps]
+        Y = Ys[:, i:i+num_steps]
+        yield X, Y
 
 
 class SeqDataLoader:
@@ -545,6 +546,17 @@ def load_data_time_machine(batch_size, num_steps,  # @save
     data_iter = SeqDataLoader(
         batch_size, num_steps, use_random_iter, max_tokens)
     return data_iter, data_iter.vocab
+
+
+def sgd(params, lr, batch_size):
+    """小批量随机梯度下降
+    Defined in :numref:`sec_linear_scratch`"""
+    with torch.no_grad():
+        for param in params:
+            param -= lr * param.grad / batch_size
+            param.grad.zero_()
+
+
 # CONSTANT AND LAMBDA EXPRESSIONS
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
