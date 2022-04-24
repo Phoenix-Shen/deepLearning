@@ -16,7 +16,7 @@ import hashlib
 import zipfile
 import tarfile
 import collections
-
+import math
 
 def use_svg_display():
     """使用svg格式在Jupyter中显示绘图"""
@@ -555,6 +555,107 @@ def sgd(params, lr, batch_size):
         for param in params:
             param -= lr * param.grad / batch_size
             param.grad.zero_()
+
+
+def predict_ch8(prefix, num_preds, net, vocab: Vocab, device: torch.device):
+    state = net.begin_state(batch_size=1, device=device)
+    outputs = [vocab[prefix[0]]]
+    def get_input(): return torch.tensor(
+        [outputs[-1]], device=device).reshape((1, 1))
+    # 预热
+    for y in prefix[1:]:
+        _, state = net(get_input(), state)
+        outputs.append(vocab[y])
+    # 进行预测
+    for _ in range(num_preds):
+        y, state = net(get_input(), state)
+        outputs.append(int(y.argmax(dim=1).reshape(1)))
+    return "".join([vocab.idx_to_token[i] for i in outputs])
+
+
+def train_epoch_ch8(net, train_iter, loss, updater, device, use_random_iter):
+    state, timer = None, Timer()
+    metric = Accumulator(2)
+    for X, Y in train_iter:
+        if state is None or use_random_iter:
+            # 在第一次迭代或使用随机抽样时初始化state
+            state = net.begin_state(batch_size=X.shape[0], device=device)
+        else:
+            if isinstance(net, nn.Module) and not isinstance(state, tuple):
+                # state对于nn.GRU是个张量
+                state.detach_()
+            else:
+                # state对于nn.LSTM或对于我们从零开始实现的模型是个张量
+                for s in state:
+                    s.detach_()
+        y = Y.T.reshape(-1)
+        X, y = X.to(device), y.to(device)
+        y_hat, state = net(X, state)
+        l = loss(y_hat, y.long()).mean()
+        if isinstance(updater, torch.optim.Optimizer):
+            updater.zero_grad()
+            l.backward()
+            grad_clipping(net, 1)
+            updater.step()
+        else:
+            l.backward()
+            grad_clipping(net, 1)
+            # 因为已经调用了mean函数
+            updater(batch_size=1)
+        metric.add(l * y.numel(), y.numel())
+    return math.exp(metric[0] / metric[1]), metric[1] / timer.stop()
+
+
+def grad_clipping(net, theta):
+    if isinstance(net, nn.Module):
+        params = [p for p in net.parameters() if p.requires_grad]
+    else:
+        params = net.params
+    norm = torch.sqrt(sum(torch.sum((p.grad**2)) for p in params))
+    if norm > theta:
+        for param in params:
+            param.grad[:] *= theta/norm
+def train_ch8(net, train_iter, vocab, lr, num_epochs, device, use_random_iter=False):
+    loss = nn.CrossEntropyLoss()
+    animator = Animator(xlabel='epoch', ylabel='perplexity',
+                        legend=['train'], xlim=[10, num_epochs])
+
+    # init
+    if isinstance(net, nn.Module):
+        updater = torch.optim.SGD(net.parameters(), lr)
+    else:
+        def updater(batch_size): return sgd(net.params, lr, batch_size)
+
+    def predict(prefix): return predict_ch8(prefix, 50, net, vocab, device)
+    #训练和预测
+    for epoch in range(num_epochs):
+        ppl, speed = train_epoch_ch8(
+            net, train_iter, loss, updater, device, use_random_iter)
+        if (epoch+1) % 10 == 0:
+            print(predict("time traveller"))
+            animator.add(epoch+1, [ppl])
+    print(f'困惑度 {ppl:.1f}, {speed:.1f} 词元/秒 {str(device)}')
+    print(predict('time traveller'))
+    print(predict('traveller'))
+def show_heatmaps(matrices: torch.Tensor, xlabel, ylabel, titles=None, figsize=(2.5, 2.5), cmap="Reds"):
+    """
+    显示矩阵热图
+    """
+    use_svg_display()
+    num_rows, num_cols = matrices.shape[0], matrices.shape[1]
+    fig, axes = plt.subplots(
+        num_rows, num_cols, figsize=figsize, sharex=True, sharey=True, squeeze=False)
+
+    for i, (row_axes, row_matrices) in enumerate(zip(axes, matrices)):
+        for j, (ax, matrix) in enumerate(zip(row_axes, row_matrices)):
+            pcm = ax.imshow(matrix.detach.numpy(), cmap=cmap)
+            if i == num_rows-1:
+                ax.set_xlabel(xlabel)
+            if j == 0:
+                ax.set_ylabel(ylabel)
+            if titles:
+                ax.set_titile(titles[j])
+    fig.colorbar(pcm, ax=axes, shrink=0.6)
 
 
 # CONSTANT AND LAMBDA EXPRESSIONS
