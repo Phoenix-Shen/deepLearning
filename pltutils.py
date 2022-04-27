@@ -17,6 +17,8 @@ import zipfile
 import tarfile
 import collections
 import math
+import torch.nn.functional as F
+
 
 def use_svg_display():
     """使用svg格式在Jupyter中显示绘图"""
@@ -615,6 +617,8 @@ def grad_clipping(net, theta):
     if norm > theta:
         for param in params:
             param.grad[:] *= theta/norm
+
+
 def train_ch8(net, train_iter, vocab, lr, num_epochs, device, use_random_iter=False):
     loss = nn.CrossEntropyLoss()
     animator = Animator(xlabel='epoch', ylabel='perplexity',
@@ -627,7 +631,7 @@ def train_ch8(net, train_iter, vocab, lr, num_epochs, device, use_random_iter=Fa
         def updater(batch_size): return sgd(net.params, lr, batch_size)
 
     def predict(prefix): return predict_ch8(prefix, 50, net, vocab, device)
-    #训练和预测
+    # 训练和预测
     for epoch in range(num_epochs):
         ppl, speed = train_epoch_ch8(
             net, train_iter, loss, updater, device, use_random_iter)
@@ -637,6 +641,8 @@ def train_ch8(net, train_iter, vocab, lr, num_epochs, device, use_random_iter=Fa
     print(f'困惑度 {ppl:.1f}, {speed:.1f} 词元/秒 {str(device)}')
     print(predict('time traveller'))
     print(predict('traveller'))
+
+
 def show_heatmaps(matrices: torch.Tensor, xlabel, ylabel, titles=None, figsize=(2.5, 2.5), cmap="Reds"):
     """
     显示矩阵热图
@@ -658,6 +664,64 @@ def show_heatmaps(matrices: torch.Tensor, xlabel, ylabel, titles=None, figsize=(
     fig.colorbar(pcm, ax=axes, shrink=0.6)
 
 
+class RNNModelScratch:
+    def __init__(self, vocab_size, num_hiddens, device: torch.device, get_params, init_state, forward_fn):
+        self.vocab_size = vocab_size
+        self.num_hiddens = num_hiddens
+        self.params = get_params(vocab_size, num_hiddens, device)
+        self.init_state = init_state
+        self.forward_fn = forward_fn
+
+    def __call__(self, X: torch.Tensor, state: torch.Tensor):
+        X = F.one_hot(X.T, self.vocab_size).type(torch.float32)
+        return self.forward_fn(X, state, self.params)
+
+    def begin_state(self, batch_size, device: torch.device):
+        return self.init_state(batch_size, self.num_hiddens, device)
+
+
+class RNNModel(nn.Module):
+    """循环神经网络模型
+    Defined in :numref:`sec_rnn-concise`"""
+
+    def __init__(self, rnn_layer, vocab_size, **kwargs):
+        super(RNNModel, self).__init__(**kwargs)
+        self.rnn = rnn_layer
+        self.vocab_size = vocab_size
+        self.num_hiddens = self.rnn.hidden_size
+        # 如果RNN是双向的（之后将介绍），num_directions应该是2，否则应该是1
+        if not self.rnn.bidirectional:
+            self.num_directions = 1
+            self.linear = nn.Linear(self.num_hiddens, self.vocab_size)
+        else:
+            self.num_directions = 2
+            self.linear = nn.Linear(self.num_hiddens * 2, self.vocab_size)
+
+    def forward(self, inputs, state):
+        X = F.one_hot(inputs.T.long(), self.vocab_size)
+        X = X.to(torch.float32)
+        Y, state = self.rnn(X, state)
+        # 全连接层首先将Y的形状改为(时间步数*批量大小,隐藏单元数)
+        # 它的输出形状是(时间步数*批量大小,词表大小)。
+        output = self.linear(Y.reshape((-1, Y.shape[-1])))
+        return output, state
+
+    def begin_state(self, device, batch_size=1):
+        if not isinstance(self.rnn, nn.LSTM):
+            # nn.GRU以张量作为隐状态
+            return torch.zeros((self.num_directions * self.rnn.num_layers,
+                                batch_size, self.num_hiddens),
+                               device=device)
+        else:
+            # nn.LSTM以元组作为隐状态
+            return (torch.zeros((
+                self.num_directions * self.rnn.num_layers,
+                batch_size, self.num_hiddens), device=device),
+                torch.zeros((
+                    self.num_directions * self.rnn.num_layers,
+                    batch_size, self.num_hiddens), device=device))
+
+
 # CONSTANT AND LAMBDA EXPRESSIONS
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
@@ -668,6 +732,7 @@ argmax = lambda x, *args, **kwargs: x.argmax(*args, **kwargs)
 astype = lambda x, *args, **kwargs: x.type(*args, **kwargs)
 transpose = lambda x, *args, **kwargs: x.t(*args, **kwargs)
 reduce_mean = lambda x, *args, **kwargs: x.mean(*args, **kwargs)
+
 # URL
 DATA_HUB = dict()
 DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/'
