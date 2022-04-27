@@ -46,6 +46,13 @@
 7. RNN
    - 序列模型
    - 文本预处理
-   - 暂时丢掉，目前不需要 RNN 来处理相关数据
+   - 语言模型和数据集构建
+   - 从零开始实现RNN
+   - 使用Pytorch构建RNN
+8. 现代RNN
+   - GRU
+   - LSTM
+   - 深度RNN
+   - 双向RNN
 
-8. Attention 机制
+9. Attention 机制

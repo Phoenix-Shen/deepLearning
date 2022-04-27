@@ -722,6 +722,14 @@ class RNNModel(nn.Module):
                     batch_size, self.num_hiddens), device=device))
 
 
+def read_data_nmt():
+    """载入“英语－法语”数据集"""
+    data_dir = download_extract('fra-eng')
+    with open(os.path.join(data_dir, 'fra.txt'), 'r',
+              encoding='utf-8') as f:
+        return f.read()
+
+
 # CONSTANT AND LAMBDA EXPRESSIONS
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
@@ -739,7 +747,6 @@ DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/'
 DATA_HUB['kaggle_house_train'] = (
     DATA_URL + 'kaggle_house_pred_train.csv',
     '585e9cc93e70b39160e7921475f9bcd7d31219ce')
-
 DATA_HUB['kaggle_house_test'] = (
     DATA_URL + 'kaggle_house_pred_test.csv',
     'fa19780a7b011d9b009e8bff8e99922a8ee2eb90')
@@ -747,3 +754,5 @@ DATA_HUB['airfoil'] = (DATA_URL + 'airfoil_self_noise.dat',
                        '76e5be1548fd8222e5074cf0faae75edff8cf93f')
 DATA_HUB['time_machine'] = (DATA_URL + 'timemachine.txt',
                             '090b5e7e70c295757f55df93cb0a180b9691891a')
+DATA_HUB['fra-eng'] = (DATA_URL + 'fra-eng.zip',
+                       '94646ad1522d915e7b0f9296181140edcf86a4f5')
