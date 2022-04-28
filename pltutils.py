@@ -557,8 +557,6 @@ def sgd(params, lr, batch_size):
         for param in params:
             param -= lr * param.grad / batch_size
             param.grad.zero_()
-
-
 def predict_ch8(prefix, num_preds, net, vocab: Vocab, device: torch.device):
     state = net.begin_state(batch_size=1, device=device)
     outputs = [vocab[prefix[0]]]
@@ -573,8 +571,6 @@ def predict_ch8(prefix, num_preds, net, vocab: Vocab, device: torch.device):
         y, state = net(get_input(), state)
         outputs.append(int(y.argmax(dim=1).reshape(1)))
     return "".join([vocab.idx_to_token[i] for i in outputs])
-
-
 def train_epoch_ch8(net, train_iter, loss, updater, device, use_random_iter):
     state, timer = None, Timer()
     metric = Accumulator(2)
@@ -606,8 +602,6 @@ def train_epoch_ch8(net, train_iter, loss, updater, device, use_random_iter):
             updater(batch_size=1)
         metric.add(l * y.numel(), y.numel())
     return math.exp(metric[0] / metric[1]), metric[1] / timer.stop()
-
-
 def grad_clipping(net, theta):
     if isinstance(net, nn.Module):
         params = [p for p in net.parameters() if p.requires_grad]
@@ -617,8 +611,6 @@ def grad_clipping(net, theta):
     if norm > theta:
         for param in params:
             param.grad[:] *= theta/norm
-
-
 def train_ch8(net, train_iter, vocab, lr, num_epochs, device, use_random_iter=False):
     loss = nn.CrossEntropyLoss()
     animator = Animator(xlabel='epoch', ylabel='perplexity',
@@ -641,8 +633,6 @@ def train_ch8(net, train_iter, vocab, lr, num_epochs, device, use_random_iter=Fa
     print(f'困惑度 {ppl:.1f}, {speed:.1f} 词元/秒 {str(device)}')
     print(predict('time traveller'))
     print(predict('traveller'))
-
-
 def show_heatmaps(matrices: torch.Tensor, xlabel, ylabel, titles=None, figsize=(2.5, 2.5), cmap="Reds"):
     """
     显示矩阵热图
@@ -662,8 +652,6 @@ def show_heatmaps(matrices: torch.Tensor, xlabel, ylabel, titles=None, figsize=(
             if titles:
                 ax.set_titile(titles[j])
     fig.colorbar(pcm, ax=axes, shrink=0.6)
-
-
 class RNNModelScratch:
     def __init__(self, vocab_size, num_hiddens, device: torch.device, get_params, init_state, forward_fn):
         self.vocab_size = vocab_size
@@ -678,8 +666,6 @@ class RNNModelScratch:
 
     def begin_state(self, batch_size, device: torch.device):
         return self.init_state(batch_size, self.num_hiddens, device)
-
-
 class RNNModel(nn.Module):
     """循环神经网络模型
     Defined in :numref:`sec_rnn-concise`"""
@@ -720,16 +706,67 @@ class RNNModel(nn.Module):
                 torch.zeros((
                     self.num_directions * self.rnn.num_layers,
                     batch_size, self.num_hiddens), device=device))
-
-
+def truncate_pad(line, num_steps, padding_token):
+    """
+    截断或者填充文本序列
+    """
+    if len(line) > num_steps:
+        return line[:num_steps]
+    return line+[padding_token]*(num_steps-len(line))
+def preprocess_nmt(text: str):
+    """
+    预处理英语-法语数据集
+    """
+    def no_space(char, prev_char):
+        return char in set(',.!?') and prev_char != " "
+    # 替换成普通空格，转小写
+    text = text.replace("\u202f", " ").replace("\xa0", " ").lower()
+    # 在单词和标点之间加入空格
+    out = [" " + char if i >
+           0 and no_space(char, text[i-1]) else char for i, char in enumerate(text)]
+    return "".join(out)
 def read_data_nmt():
     """载入“英语－法语”数据集"""
     data_dir = download_extract('fra-eng')
     with open(os.path.join(data_dir, 'fra.txt'), 'r',
               encoding='utf-8') as f:
         return f.read()
-
-
+def tokenize_nmt(text:str,num_examples=None):
+    """
+    词元化英语-法语数据集
+    """
+    source,target=[],[]
+    for i ,line in enumerate(text.split("\n")):
+        if num_examples and i>num_examples:
+            break
+        # 以水平制表符分隔
+        parts=line.split("\t")
+        if len(parts)==2:
+            source.append(parts[0].split(" "))
+            target.append(parts[1].split(" "))
+    return source,target
+def build_array_nmt(lines,vocab,num_steps):
+    """
+    将文本序列转换成小批量
+    """
+    lines =[vocab[l] for l in lines]
+    lines=[l+[vocab["<eos>"]] for l in lines]
+    array=torch.tensor([truncate_pad(l,num_steps,vocab["<pad>"]) for l in lines])
+    valid_len=(array!=vocab["<pad>"]).type(torch.int32).sum(1)
+    return array,valid_len
+def load_data_nmt(batch_size, num_steps, num_examples=600):
+    """返回翻译数据集的迭代器和词表"""
+    text = preprocess_nmt(read_data_nmt())
+    source, target = tokenize_nmt(text, num_examples)
+    src_vocab = Vocab(source, min_freq=2,
+                      reserved_tokens=['<pad>', '<bos>', '<eos>'])
+    tgt_vocab = Vocab(target, min_freq=2,
+                      reserved_tokens=['<pad>', '<bos>', '<eos>'])
+    src_array, src_valid_len = build_array_nmt(source, src_vocab, num_steps)
+    tgt_array, tgt_valid_len = build_array_nmt(target, tgt_vocab, num_steps)
+    data_arrays = (src_array, src_valid_len, tgt_array, tgt_valid_len)
+    data_iter = load_array(data_arrays, batch_size)
+    return data_iter, src_vocab, tgt_vocab
 # CONSTANT AND LAMBDA EXPRESSIONS
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
