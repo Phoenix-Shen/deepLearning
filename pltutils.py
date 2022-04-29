@@ -391,6 +391,8 @@ def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
           f'test acc {test_acc:.3f}')
     print(f'{metric[2] * num_epochs / timer.sum():.1f} examples/sec '
           f'on {str(device)}')
+
+
 def evaluate_accuracy_gpu(net, data_iter, device=None):  # @save
     """使用GPU计算模型在数据集上的精度"""
     if isinstance(net, nn.Module):
@@ -409,11 +411,15 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):  # @save
             y = y.to(device)
             metric.add(accuracy(net(X), y), y.numel())
     return metric[0] / metric[1]
+
+
 def count_corpus(tokens: list):
     # token 是1D列表或者是2D列表
     if len(tokens) == 0 or isinstance(tokens[0], list):
         tokens = [token for line in tokens for token in line]
     return collections.Counter(tokens)
+
+
 class Vocab:
     """
     文本词表
@@ -461,10 +467,14 @@ class Vocab:
     @property
     def token_freqs(self):
         return self._token_freqs
+
+
 def read_time_machine():
     with open(download("time_machine"), "r") as f:
         lines = f.readlines()
     return [re.sub('[^A-Za-z]+', ' ', line).strip().lower() for line in lines]
+
+
 def tokenize(lines, token="word"):
     if token == "word":
         return [line.split() for line in lines]
@@ -472,6 +482,8 @@ def tokenize(lines, token="word"):
         return [list(line) for line in lines]
     else:
         raise NotImplementedError("only support Word and Char")
+
+
 def load_corpus_time_machine(max_tokens=-1):
     lines = read_time_machine()
     tokens = tokenize(lines, "char")
@@ -480,6 +492,8 @@ def load_corpus_time_machine(max_tokens=-1):
     if max_tokens > 0:
         corpus = corpus[:max_tokens]
     return corpus, vocab
+
+
 def seq_data_iter_random(corpus: list[str], batch_size: int, num_steps: int):
     # 从随机偏移量开始对序列进行分区，随机范围包括numsteps-1
     corpus = corpus[random.randint(0, num_steps-1):]
@@ -499,6 +513,8 @@ def seq_data_iter_random(corpus: list[str], batch_size: int, num_steps: int):
         X = [data(j) for j in initial_indices_per_batch]
         Y = [data(j+1) for j in initial_indices_per_batch]
         yield torch.tensor(X), torch.tensor(Y)
+
+
 def seq_data_iter_sequential(corpus, batch_size, num_steps):
     offset = random.randint(0, num_steps)
 
@@ -511,6 +527,8 @@ def seq_data_iter_sequential(corpus, batch_size, num_steps):
         X = Xs[:, i:i+num_steps]
         Y = Ys[:, i:i+num_steps]
         yield X, Y
+
+
 class SeqDataLoader:
     def __init__(self, batch_size, num_steps, use_random_iter, max_tokens):
         if use_random_iter:
@@ -522,12 +540,16 @@ class SeqDataLoader:
 
     def __iter__(self):
         return self.data_iter_fn(self.corps, self.batch_size, self.num_steps)
+
+
 def load_data_time_machine(batch_size, num_steps,  # @save
                            use_random_iter=False, max_tokens=10000):
     """返回时光机器数据集的迭代器和词表"""
     data_iter = SeqDataLoader(
         batch_size, num_steps, use_random_iter, max_tokens)
     return data_iter, data_iter.vocab
+
+
 def sgd(params, lr, batch_size):
     """小批量随机梯度下降
     Defined in :numref:`sec_linear_scratch`"""
@@ -535,6 +557,8 @@ def sgd(params, lr, batch_size):
         for param in params:
             param -= lr * param.grad / batch_size
             param.grad.zero_()
+
+
 def predict_ch8(prefix, num_preds, net, vocab: Vocab, device: torch.device):
     state = net.begin_state(batch_size=1, device=device)
     outputs = [vocab[prefix[0]]]
@@ -549,6 +573,8 @@ def predict_ch8(prefix, num_preds, net, vocab: Vocab, device: torch.device):
         y, state = net(get_input(), state)
         outputs.append(int(y.argmax(dim=1).reshape(1)))
     return "".join([vocab.idx_to_token[i] for i in outputs])
+
+
 def train_epoch_ch8(net, train_iter, loss, updater, device, use_random_iter):
     state, timer = None, Timer()
     metric = Accumulator(2)
@@ -580,6 +606,8 @@ def train_epoch_ch8(net, train_iter, loss, updater, device, use_random_iter):
             updater(batch_size=1)
         metric.add(l * y.numel(), y.numel())
     return math.exp(metric[0] / metric[1]), metric[1] / timer.stop()
+
+
 def grad_clipping(net, theta):
     if isinstance(net, nn.Module):
         params = [p for p in net.parameters() if p.requires_grad]
@@ -589,6 +617,8 @@ def grad_clipping(net, theta):
     if norm > theta:
         for param in params:
             param.grad[:] *= theta/norm
+
+
 def train_ch8(net, train_iter, vocab, lr, num_epochs, device, use_random_iter=False):
     loss = nn.CrossEntropyLoss()
     animator = Animator(xlabel='epoch', ylabel='perplexity',
@@ -611,6 +641,8 @@ def train_ch8(net, train_iter, vocab, lr, num_epochs, device, use_random_iter=Fa
     print(f'困惑度 {ppl:.1f}, {speed:.1f} 词元/秒 {str(device)}')
     print(predict('time traveller'))
     print(predict('traveller'))
+
+
 def show_heatmaps(matrices: torch.Tensor, xlabel, ylabel, titles=None, figsize=(2.5, 2.5), cmap="Reds"):
     """
     显示矩阵热图
@@ -630,6 +662,8 @@ def show_heatmaps(matrices: torch.Tensor, xlabel, ylabel, titles=None, figsize=(
             if titles:
                 ax.set_titile(titles[j])
     fig.colorbar(pcm, ax=axes, shrink=0.6)
+
+
 class RNNModelScratch:
     def __init__(self, vocab_size, num_hiddens, device: torch.device, get_params, init_state, forward_fn):
         self.vocab_size = vocab_size
@@ -644,6 +678,8 @@ class RNNModelScratch:
 
     def begin_state(self, batch_size, device: torch.device):
         return self.init_state(batch_size, self.num_hiddens, device)
+
+
 class RNNModel(nn.Module):
     """循环神经网络模型
     Defined in :numref:`sec_rnn-concise`"""
@@ -684,6 +720,8 @@ class RNNModel(nn.Module):
                 torch.zeros((
                     self.num_directions * self.rnn.num_layers,
                     batch_size, self.num_hiddens), device=device))
+
+
 def truncate_pad(line, num_steps, padding_token):
     """
     截断或者填充文本序列
@@ -691,6 +729,8 @@ def truncate_pad(line, num_steps, padding_token):
     if len(line) > num_steps:
         return line[:num_steps]
     return line+[padding_token]*(num_steps-len(line))
+
+
 def preprocess_nmt(text: str):
     """
     预处理英语-法语数据集
@@ -703,35 +743,44 @@ def preprocess_nmt(text: str):
     out = [" " + char if i >
            0 and no_space(char, text[i-1]) else char for i, char in enumerate(text)]
     return "".join(out)
+
+
 def read_data_nmt():
     """载入“英语－法语”数据集"""
     data_dir = download_extract('fra-eng')
     with open(os.path.join(data_dir, 'fra.txt'), 'r',
               encoding='utf-8') as f:
         return f.read()
-def tokenize_nmt(text:str,num_examples=None):
+
+
+def tokenize_nmt(text: str, num_examples=None):
     """
     词元化英语-法语数据集
     """
-    source,target=[],[]
-    for i ,line in enumerate(text.split("\n")):
-        if num_examples and i>num_examples:
+    source, target = [], []
+    for i, line in enumerate(text.split("\n")):
+        if num_examples and i > num_examples:
             break
         # 以水平制表符分隔
-        parts=line.split("\t")
-        if len(parts)==2:
+        parts = line.split("\t")
+        if len(parts) == 2:
             source.append(parts[0].split(" "))
             target.append(parts[1].split(" "))
-    return source,target
-def build_array_nmt(lines,vocab,num_steps):
+    return source, target
+
+
+def build_array_nmt(lines, vocab, num_steps):
     """
     将文本序列转换成小批量
     """
-    lines =[vocab[l] for l in lines]
-    lines=[l+[vocab["<eos>"]] for l in lines]
-    array=torch.tensor([truncate_pad(l,num_steps,vocab["<pad>"]) for l in lines])
-    valid_len=(array!=vocab["<pad>"]).type(torch.int32).sum(1)
-    return array,valid_len
+    lines = [vocab[l] for l in lines]
+    lines = [l+[vocab["<eos>"]] for l in lines]
+    array = torch.tensor(
+        [truncate_pad(l, num_steps, vocab["<pad>"]) for l in lines])
+    valid_len = (array != vocab["<pad>"]).type(torch.int32).sum(1)
+    return array, valid_len
+
+
 def load_data_nmt(batch_size, num_steps, num_examples=600):
     """返回翻译数据集的迭代器和词表"""
     text = preprocess_nmt(read_data_nmt())
@@ -745,24 +794,50 @@ def load_data_nmt(batch_size, num_steps, num_examples=600):
     data_arrays = (src_array, src_valid_len, tgt_array, tgt_valid_len)
     data_iter = load_array(data_arrays, batch_size)
     return data_iter, src_vocab, tgt_vocab
-def show_heatmaps(matrices:torch.Tensor,xlabel,ylabel,titles=None,figsize=(2.5,2.5),cmap="Reds"):
+
+
+def show_heatmaps(matrices: torch.Tensor, xlabel, ylabel, titles=None, figsize=(2.5, 2.5), cmap="Reds"):
     """
     显示矩阵热图
     """
     use_svg_display()
-    num_rows,num_cols=matrices.shape[0],matrices.shape[1]
-    fig,axes=plt.subplots(num_rows,num_cols,figsize=figsize,sharex=True,sharey=True,squeeze=False)
+    num_rows, num_cols = matrices.shape[0], matrices.shape[1]
+    fig, axes = plt.subplots(
+        num_rows, num_cols, figsize=figsize, sharex=True, sharey=True, squeeze=False)
 
-    for i,(row_axes,row_matrices) in enumerate(zip(axes,matrices)):
-        for j, (ax,matrix) in enumerate(zip(row_axes,row_matrices)):
-            pcm = ax.imshow(matrix.detach().numpy(),cmap=cmap)
-            if i==num_rows-1:
+    for i, (row_axes, row_matrices) in enumerate(zip(axes, matrices)):
+        for j, (ax, matrix) in enumerate(zip(row_axes, row_matrices)):
+            pcm = ax.imshow(matrix.detach().numpy(), cmap=cmap)
+            if i == num_rows-1:
                 ax.set_xlabel(xlabel)
-            if j==0:
+            if j == 0:
                 ax.set_ylabel(ylabel)
             if titles:
                 ax.set_titile(titles[j])
-    fig.colorbar(pcm,ax=axes,shrink=0.6)
+    fig.colorbar(pcm, ax=axes, shrink=0.6)
+
+
+def sequence_mask(X: torch.Tensor, valid_len: torch.Tensor, value=0):
+    """在序列中屏蔽不相关的项"""
+    maxlen = X.size(1)
+    mask = torch.arange((maxlen), dtype=torch.float32, device=X.device)[
+        None, :] < valid_len[:, None]
+    X[~mask] = value
+    return X
+
+def masked_softmax(X:torch.Tensor,valid_lens:torch.Tensor):
+
+    if valid_lens is None:
+        return F.softmax(X,dim=-1)
+    else:
+        shape =X.shape
+        if valid_lens.dim() ==1:
+            valid_lens = torch.repeat_interleave(valid_lens,shape[1])
+        else:
+            valid_lens=valid_lens.reshape(-1)
+        # 最后一个轴上被这比的元素使用一个非常大的肤质来替换，是softmax输出为0
+        X=sequence_mask(X.reshape(-1,shape[-1]),valid_lens,value=-1e6)
+        return F.softmax(X.reshape(shape),dim=-1)
 # CONSTANT AND LAMBDA EXPRESSIONS
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
