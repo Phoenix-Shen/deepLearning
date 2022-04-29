@@ -391,8 +391,6 @@ def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
           f'test acc {test_acc:.3f}')
     print(f'{metric[2] * num_epochs / timer.sum():.1f} examples/sec '
           f'on {str(device)}')
-
-
 def evaluate_accuracy_gpu(net, data_iter, device=None):  # @save
     """使用GPU计算模型在数据集上的精度"""
     if isinstance(net, nn.Module):
@@ -411,15 +409,11 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):  # @save
             y = y.to(device)
             metric.add(accuracy(net(X), y), y.numel())
     return metric[0] / metric[1]
-
-
 def count_corpus(tokens: list):
     # token 是1D列表或者是2D列表
     if len(tokens) == 0 or isinstance(tokens[0], list):
         tokens = [token for line in tokens for token in line]
     return collections.Counter(tokens)
-
-
 class Vocab:
     """
     文本词表
@@ -467,14 +461,10 @@ class Vocab:
     @property
     def token_freqs(self):
         return self._token_freqs
-
-
 def read_time_machine():
     with open(download("time_machine"), "r") as f:
         lines = f.readlines()
     return [re.sub('[^A-Za-z]+', ' ', line).strip().lower() for line in lines]
-
-
 def tokenize(lines, token="word"):
     if token == "word":
         return [line.split() for line in lines]
@@ -482,8 +472,6 @@ def tokenize(lines, token="word"):
         return [list(line) for line in lines]
     else:
         raise NotImplementedError("only support Word and Char")
-
-
 def load_corpus_time_machine(max_tokens=-1):
     lines = read_time_machine()
     tokens = tokenize(lines, "char")
@@ -492,8 +480,6 @@ def load_corpus_time_machine(max_tokens=-1):
     if max_tokens > 0:
         corpus = corpus[:max_tokens]
     return corpus, vocab
-
-
 def seq_data_iter_random(corpus: list[str], batch_size: int, num_steps: int):
     # 从随机偏移量开始对序列进行分区，随机范围包括numsteps-1
     corpus = corpus[random.randint(0, num_steps-1):]
@@ -513,8 +499,6 @@ def seq_data_iter_random(corpus: list[str], batch_size: int, num_steps: int):
         X = [data(j) for j in initial_indices_per_batch]
         Y = [data(j+1) for j in initial_indices_per_batch]
         yield torch.tensor(X), torch.tensor(Y)
-
-
 def seq_data_iter_sequential(corpus, batch_size, num_steps):
     offset = random.randint(0, num_steps)
 
@@ -527,8 +511,6 @@ def seq_data_iter_sequential(corpus, batch_size, num_steps):
         X = Xs[:, i:i+num_steps]
         Y = Ys[:, i:i+num_steps]
         yield X, Y
-
-
 class SeqDataLoader:
     def __init__(self, batch_size, num_steps, use_random_iter, max_tokens):
         if use_random_iter:
@@ -540,16 +522,12 @@ class SeqDataLoader:
 
     def __iter__(self):
         return self.data_iter_fn(self.corps, self.batch_size, self.num_steps)
-
-
 def load_data_time_machine(batch_size, num_steps,  # @save
                            use_random_iter=False, max_tokens=10000):
     """返回时光机器数据集的迭代器和词表"""
     data_iter = SeqDataLoader(
         batch_size, num_steps, use_random_iter, max_tokens)
     return data_iter, data_iter.vocab
-
-
 def sgd(params, lr, batch_size):
     """小批量随机梯度下降
     Defined in :numref:`sec_linear_scratch`"""
@@ -767,6 +745,24 @@ def load_data_nmt(batch_size, num_steps, num_examples=600):
     data_arrays = (src_array, src_valid_len, tgt_array, tgt_valid_len)
     data_iter = load_array(data_arrays, batch_size)
     return data_iter, src_vocab, tgt_vocab
+def show_heatmaps(matrices:torch.Tensor,xlabel,ylabel,titles=None,figsize=(2.5,2.5),cmap="Reds"):
+    """
+    显示矩阵热图
+    """
+    use_svg_display()
+    num_rows,num_cols=matrices.shape[0],matrices.shape[1]
+    fig,axes=plt.subplots(num_rows,num_cols,figsize=figsize,sharex=True,sharey=True,squeeze=False)
+
+    for i,(row_axes,row_matrices) in enumerate(zip(axes,matrices)):
+        for j, (ax,matrix) in enumerate(zip(row_axes,row_matrices)):
+            pcm = ax.imshow(matrix.detach().numpy(),cmap=cmap)
+            if i==num_rows-1:
+                ax.set_xlabel(xlabel)
+            if j==0:
+                ax.set_ylabel(ylabel)
+            if titles:
+                ax.set_titile(titles[j])
+    fig.colorbar(pcm,ax=axes,shrink=0.6)
 # CONSTANT AND LAMBDA EXPRESSIONS
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
