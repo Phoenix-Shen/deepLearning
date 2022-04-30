@@ -18,7 +18,7 @@ import tarfile
 import collections
 import math
 import torch.nn.functional as F
-
+import torch as t
 
 def use_svg_display():
     """使用svg格式在Jupyter中显示绘图"""
@@ -825,19 +825,222 @@ def sequence_mask(X: torch.Tensor, valid_len: torch.Tensor, value=0):
     X[~mask] = value
     return X
 
-def masked_softmax(X:torch.Tensor,valid_lens:torch.Tensor):
+
+def masked_softmax(X: torch.Tensor, valid_lens: torch.Tensor):
 
     if valid_lens is None:
-        return F.softmax(X,dim=-1)
+        return F.softmax(X, dim=-1)
     else:
-        shape =X.shape
-        if valid_lens.dim() ==1:
-            valid_lens = torch.repeat_interleave(valid_lens,shape[1])
+        shape = X.shape
+        if valid_lens.dim() == 1:
+            valid_lens = torch.repeat_interleave(valid_lens, shape[1])
         else:
-            valid_lens=valid_lens.reshape(-1)
+            valid_lens = valid_lens.reshape(-1)
         # 最后一个轴上被这比的元素使用一个非常大的肤质来替换，是softmax输出为0
-        X=sequence_mask(X.reshape(-1,shape[-1]),valid_lens,value=-1e6)
-        return F.softmax(X.reshape(shape),dim=-1)
+        X = sequence_mask(X.reshape(-1, shape[-1]), valid_lens, value=-1e6)
+        return F.softmax(X.reshape(shape), dim=-1)
+
+
+class Encoder(nn.Module):
+    def __init__(self, **kwargs):
+        super(Encoder, self).__init__(**kwargs)
+
+    def forward(self, X: torch.Tensor, *args):
+        raise NotImplementedError
+
+
+class Decoder(nn.Module):
+    def __init__(self, **kwargs):
+        super(Decoder, self).__init__(**kwargs)
+
+    def init_state(self, enc_outputs, *args):
+        raise NotImplementedError
+
+    def forward(self, X: torch.Tensor, state):
+        raise NotImplementedError
+
+
+class EncoderDecoder(nn.Module):
+    def __init__(self, encoder: Encoder, decoder: Decoder, **kwargs):
+        super().__init__(**kwargs)
+        self.encoder = encoder
+        self.decoder = decoder
+
+    def forward(self, enc_X: torch.Tensor, dec_X: torch.Tensor, *args) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        前向传播函数
+        """
+        enc_outputs = self.encoder(enc_X, *args)
+        dec_state = self.decoder.init_state(enc_outputs, *args)
+        return self.decoder.forward(dec_X, dec_state)
+
+
+# 加性注意力
+class AdditiveAttention(nn.Module):
+    def __init__(self, key_size, query_size, num_hiddens, dropout, **kwargs):
+        super().__init__(**kwargs)
+        self.W_k = nn.Linear(key_size, num_hiddens, bias=False)
+        self.W_q = nn.Linear(query_size, num_hiddens, bias=False)
+        self.w_v = nn.Linear(num_hiddens, 1, bias=False)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, queries, keys, values, valid_lens):
+        queries, keys = self.W_q.forward(queries), self.W_k.forward(keys)
+        # 维度扩展之后，
+        # queries.shape = batch_size, num_queries, 1, num_hidden
+        # key.shape = batch_size, 1, num_kvs , num_hiddens
+        # 使用广播形式进行求和
+        features = queries.unsqueeze(2) + keys.unsqueeze(1)
+        features = torch.tanh(features)
+        # self.w_v只有一个输出，因此从形状中移除最后的那个维度
+        # socres.shape = batch_size, num_queries, num_kvs
+        scores = self.w_v.forward(features).squeeze(-1)
+        self.attention_weights = masked_softmax(scores, valid_lens)
+        return torch.bmm(self.dropout(self.attention_weights), values)
+
+
+class DotProductAttention(nn.Module):
+    def __init__(self, dropout, **kwargs):
+        super().__init__(**kwargs)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, queries, keys, values, valid_lens=None):
+        d = queries.shape[-1]
+        scores = torch.bmm(queries, keys.transpose(1, 2))/math.sqrt(d)
+        self.attention_weights = masked_softmax(scores, valid_lens)
+        return torch.bmm(self.dropout(self.attention_weights), values)
+
+
+class Seq2SeqEncoder(Encoder):
+    def __init__(self, vocab_size, embed_size, num_hiddens, num_layers, dropout=0, **kwargs):
+        super().__init__(**kwargs)
+        # 定义嵌入层
+        self.embedding = nn.Embedding(vocab_size, embed_size)
+        self.rnn = nn.GRU(embed_size, num_hiddens, num_layers, dropout=dropout)
+
+    def forward(self, X: torch.Tensor, *args):
+        # X.shape = [batch_size,num_steps,emb_size]
+        X = self.embedding.forward(X)
+        # 第一个轴对应时间步 , equals = Tensor.transpose(1,0,2)
+        X = X.permute(1, 0, 2)
+        # 如果没有提及状态，默认为0
+        output, state = self.rnn.forward(X)
+        # output.shape = [num_steps,batch_size,num_hiddens]
+        # 在这里 output还要经过线性层才能够输出想要的维度
+        # state[0].shape =[num_layers,batch_size,num_hiddens]
+        return output, state
+
+
+def train_seq2seq(net: nn.Module, data_iter, lr, num_epochs, tgt_vocab, device: t.device):
+
+    def xavier_init_weights(m: nn.Module):
+        if type(m) == nn.Linear:
+            nn.init.xavier_uniform_(m.weight)
+        if type(m) == nn.GRU:
+            for param in m._flat_weights_names:
+                if "weight" in param:
+                    nn.init.xavier_uniform_(m._parameters[param])
+
+    net.apply(xavier_init_weights)
+    net.to(device)
+    optimizer = t.optim.Adam(net.parameters(), lr=lr)
+    loss = MaskedSoftmaxCELoss()
+    net.train()
+    animator = Animator(xlabel="epoch", ylabel="loss", xlim=[10, num_epochs])
+
+    for epoch in range(num_epochs):
+        timer = Timer()
+        metric = Accumulator(2)
+
+        for batch in data_iter:
+            optimizer.zero_grad()
+            # to device
+            X, X_valid_len, Y, Y_valid_len = [x.to(device) for x in batch]
+            # 获取开始符的下标
+            bos = t.tensor([tgt_vocab["<bos>"]]*Y.shape[0],
+                           device=device).reshape(-1, 1)
+            #在每个句子之前加上开始符
+            dec_input = t.cat([bos, Y[:, :-1]], 1)
+            Y_hat, _ = net.forward(X, dec_input, X_valid_len)
+            l = loss.forward(Y_hat, Y, Y_valid_len)
+            l.sum().backward()
+            grad_clipping(net, 1)
+            num_tokens = Y_valid_len.sum()
+            optimizer.step()
+            with t.no_grad():
+                metric.add(l.sum(), num_tokens)
+        if (epoch+1) % 10 == 0:
+            animator.add(epoch+1, (metric[0]/metric[1],))
+    print(f'loss {metric[0] / metric[1]:.3f}, {metric[1] / timer.stop():.1f} '
+          f'tokens/sec on {str(device)}')
+def sequence_mask(X:t.Tensor,valid_len:t.Tensor,value=0):
+    """在序列中屏蔽不相关的项"""
+    maxlen=X.size(1)
+    mask=t.arange((maxlen),dtype=t.float32,device=X.device)[None,:]<valid_len[:,None]
+    X[~mask]=value
+    return X
+class MaskedSoftmaxCELoss(nn.CrossEntropyLoss):
+    def forward(self,pred:t.Tensor,label:t.Tensor,valid_len:t.Tensor):
+        # pred.shape = batch,step,vsize
+        # label.shape =batch,step
+        # valid_len.shape = batch,
+        weights=t.ones_like(label)
+        weights=sequence_mask(weights,valid_len)
+        self.reduction="none"
+        pred=pred.permute(0,2,1)
+        unweighted_loss=super().forward(pred,label)
+        weighted_loss=(unweighted_loss*weights).mean(dim=1)
+        return weighted_loss
+def predict_seq2seq(net, src_sentence, src_vocab, tgt_vocab, num_steps,
+                    device, save_attention_weights=False):
+    """序列到序列模型的预测
+    Defined in :numref:`sec_seq2seq_training`"""
+    # 在预测时将net设置为评估模式
+    net.eval()
+    src_tokens = src_vocab[src_sentence.lower().split(' ')] + [
+        src_vocab['<eos>']]
+    enc_valid_len = torch.tensor([len(src_tokens)], device=device)
+    src_tokens = truncate_pad(src_tokens, num_steps, src_vocab['<pad>'])
+    # 添加批量轴
+    enc_X = torch.unsqueeze(
+        torch.tensor(src_tokens, dtype=torch.long, device=device), dim=0)
+    enc_outputs = net.encoder(enc_X, enc_valid_len)
+    dec_state = net.decoder.init_state(enc_outputs, enc_valid_len)
+    # 添加批量轴
+    dec_X = torch.unsqueeze(torch.tensor(
+        [tgt_vocab['<bos>']], dtype=torch.long, device=device), dim=0)
+    output_seq, attention_weight_seq = [], []
+    for _ in range(num_steps):
+        Y, dec_state = net.decoder(dec_X, dec_state)
+        # 我们使用具有预测最高可能性的词元，作为解码器在下一时间步的输入
+        dec_X = Y.argmax(dim=2)
+        pred = dec_X.squeeze(dim=0).type(torch.int32).item()
+        # 保存注意力权重（稍后讨论）
+        if save_attention_weights:
+            attention_weight_seq.append(net.decoder.attention_weights)
+        # 一旦序列结束词元被预测，输出序列的生成就完成了
+        if pred == tgt_vocab['<eos>']:
+            break
+        output_seq.append(pred)
+    return ' '.join(tgt_vocab.to_tokens(output_seq)), attention_weight_seq
+
+
+
+def bleu(pred_seq, label_seq, k):  # @save
+    """计算BLEU"""
+    pred_tokens, label_tokens = pred_seq.split(' '), label_seq.split(' ')
+    len_pred, len_label = len(pred_tokens), len(label_tokens)
+    score = math.exp(min(0, 1 - len_label / len_pred))
+    for n in range(1, k + 1):
+        num_matches, label_subs = 0, collections.defaultdict(int)
+        for i in range(len_label - n + 1):
+            label_subs[' '.join(label_tokens[i: i + n])] += 1
+        for i in range(len_pred - n + 1):
+            if label_subs[' '.join(pred_tokens[i: i + n])] > 0:
+                num_matches += 1
+                label_subs[' '.join(pred_tokens[i: i + n])] -= 1
+        score *= math.pow(num_matches / (len_pred - n + 1), math.pow(0.5, n))
+    return score
 # CONSTANT AND LAMBDA EXPRESSIONS
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
