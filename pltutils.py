@@ -20,6 +20,7 @@ import math
 import torch.nn.functional as F
 import torch as t
 
+
 def use_svg_display():
     """使用svg格式在Jupyter中显示绘图"""
     display.set_matplotlib_formats('svg')
@@ -959,7 +960,7 @@ def train_seq2seq(net: nn.Module, data_iter, lr, num_epochs, tgt_vocab, device: 
             # 获取开始符的下标
             bos = t.tensor([tgt_vocab["<bos>"]]*Y.shape[0],
                            device=device).reshape(-1, 1)
-            #在每个句子之前加上开始符
+            # 在每个句子之前加上开始符
             dec_input = t.cat([bos, Y[:, :-1]], 1)
             Y_hat, _ = net.forward(X, dec_input, X_valid_len)
             l = loss.forward(Y_hat, Y, Y_valid_len)
@@ -973,24 +974,31 @@ def train_seq2seq(net: nn.Module, data_iter, lr, num_epochs, tgt_vocab, device: 
             animator.add(epoch+1, (metric[0]/metric[1],))
     print(f'loss {metric[0] / metric[1]:.3f}, {metric[1] / timer.stop():.1f} '
           f'tokens/sec on {str(device)}')
-def sequence_mask(X:t.Tensor,valid_len:t.Tensor,value=0):
+
+
+def sequence_mask(X: t.Tensor, valid_len: t.Tensor, value=0):
     """在序列中屏蔽不相关的项"""
-    maxlen=X.size(1)
-    mask=t.arange((maxlen),dtype=t.float32,device=X.device)[None,:]<valid_len[:,None]
-    X[~mask]=value
+    maxlen = X.size(1)
+    mask = t.arange((maxlen), dtype=t.float32, device=X.device)[
+        None, :] < valid_len[:, None]
+    X[~mask] = value
     return X
+
+
 class MaskedSoftmaxCELoss(nn.CrossEntropyLoss):
-    def forward(self,pred:t.Tensor,label:t.Tensor,valid_len:t.Tensor):
+    def forward(self, pred: t.Tensor, label: t.Tensor, valid_len: t.Tensor):
         # pred.shape = batch,step,vsize
         # label.shape =batch,step
         # valid_len.shape = batch,
-        weights=t.ones_like(label)
-        weights=sequence_mask(weights,valid_len)
-        self.reduction="none"
-        pred=pred.permute(0,2,1)
-        unweighted_loss=super().forward(pred,label)
-        weighted_loss=(unweighted_loss*weights).mean(dim=1)
+        weights = t.ones_like(label)
+        weights = sequence_mask(weights, valid_len)
+        self.reduction = "none"
+        pred = pred.permute(0, 2, 1)
+        unweighted_loss = super().forward(pred, label)
+        weighted_loss = (unweighted_loss*weights).mean(dim=1)
         return weighted_loss
+
+
 def predict_seq2seq(net, src_sentence, src_vocab, tgt_vocab, num_steps,
                     device, save_attention_weights=False):
     """序列到序列模型的预测
@@ -1025,7 +1033,6 @@ def predict_seq2seq(net, src_sentence, src_vocab, tgt_vocab, num_steps,
     return ' '.join(tgt_vocab.to_tokens(output_seq)), attention_weight_seq
 
 
-
 def bleu(pred_seq, label_seq, k):  # @save
     """计算BLEU"""
     pred_tokens, label_tokens = pred_seq.split(' '), label_seq.split(' ')
@@ -1041,6 +1048,57 @@ def bleu(pred_seq, label_seq, k):  # @save
                 label_subs[' '.join(pred_tokens[i: i + n])] -= 1
         score *= math.pow(num_matches / (len_pred - n + 1), math.pow(0.5, n))
     return score
+
+
+def transpose_qkv(X: torch.Tensor, num_heads: int):
+    """
+    为了多注意力的并行计算而转换形状
+    """
+    # 输入X的形状:(batch_size，查询或者“键－值”对的个数，num_hiddens)
+    # 输出X的形状:(batch_size，查询或者“键－值”对的个数，num_heads，num_hiddens/num_heads)
+    X = X.reshape(X.shape[0], X.shape[1], num_heads, -1)
+    # 输出X的形状:(batch_size，num_heads，查询或者“键－值”对的个数,
+    # num_hiddens/num_heads)
+    X = X.permute(0, 2, 1, 3)
+    # 最终输出 (batch_size*num_heads,查询或者“键－值”对的个数,num_hiddens/num_heads)
+    return X.reshape(-1, X.shape[2], X.shape[3])
+
+
+def transpose_output(X: torch.Tensor, num_heads):
+    """逆转transpose_qkv函数的操作"""
+    X = X.reshape(-1, num_heads, X.shape[1], X.shape[2])
+    X = X.permute(0, 2, 1, 3)
+    return X.reshape(X.shape[0], X.shape[1], -1)
+
+
+class MultiHeadAttention(nn.Module):
+    def __init__(self, key_size, query_size, value_size, num_hiddens, num_heads, dropout, bias=False, **kwargs):
+        super().__init__(**kwargs)
+        self.num_heads = num_heads
+        self.attention = DotProductAttention(dropout)
+        self.W_q = nn.Linear(query_size, num_hiddens, bias=bias)
+        self.W_k = nn.Linear(key_size, num_hiddens, bias=bias)
+        self.W_v = nn.Linear(value_size, num_hiddens, bias=bias)
+        self.W_o = nn.Linear(num_hiddens, num_hiddens, bias=bias)
+
+    def forward(self, queries, keys, values, valid_lens):
+        # 将这些玩意拆成batch实现并行化
+        # queries, keys, values.shape = (batch_size, num_of_q/k/v s,num_hiddens)
+        # valied_lens.shape = (batch_size,num_queries)
+        queries = transpose_qkv(self.W_q.forward(queries), self.num_heads)
+        keys = transpose_qkv(self.W_k.forward(keys), self.num_heads)
+        values = transpose_qkv(self.W_v.forward(values), self.num_heads)
+
+        if valid_lens is not None:
+            valid_lens = t.repeat_interleave(
+                valid_lens, repeats=self.num_heads, dim=0)
+        output = self.attention(queries, keys, values, valid_lens)
+
+        # output_concat的形状:(batch_size，查询的个数，num_hiddens)
+        output_concat = transpose_output(output, self.num_heads)
+        return self.W_o(output_concat)
+
+
 # CONSTANT AND LAMBDA EXPRESSIONS
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)

@@ -60,3 +60,8 @@
    - 序列到序列的翻译
 9. Attention 机制
    - 注意力提示
+   - Nadaraya-Watson核回归
+   - 注意力分数
+   - Bahadanau Attention (没搞懂是啥玩意)
+   - 多头注意力
+   - 自注意力和位置编码
