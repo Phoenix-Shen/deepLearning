@@ -49,6 +49,7 @@
    - 语言模型和数据集构建
    - 从零开始实现RNN
    - 使用Pytorch构建RNN
+   - RNN的梯度计算
 8. 现代RNN
    - GRU
    - LSTM
