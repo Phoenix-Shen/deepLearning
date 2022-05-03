@@ -1098,7 +1098,19 @@ class MultiHeadAttention(nn.Module):
         output_concat = transpose_output(output, self.num_heads)
         return self.W_o(output_concat)
 
-
+class PositionalEncoding(nn.Module):
+    def __init__(self,num_hiddens,dropout,max_len=1000):
+        super().__init__()
+        self.dropout=nn.Dropout(dropout)
+        # 创建一个足够长的P
+        self.p = t.zeros((1,max_len,num_hiddens))
+        X = t.arange(max_len,dtype=t.float32).reshape(-1,1)/t.pow(10000,t.arange(0,num_hiddens,2,dtype=t.float32)/num_hiddens)
+        self.p[:,:,0::2]=t.sin(X)
+        self.p[:,:,1::2]=t.cos(X)
+    
+    def forward(self,X):
+        X = X+self.p[:,:X.shape[1],:].to(X.device)
+        return self.dropout.forward(X)
 # CONSTANT AND LAMBDA EXPRESSIONS
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
