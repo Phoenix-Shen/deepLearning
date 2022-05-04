@@ -1,0 +1,15 @@
+num_hiddens: 32
+num_layers: 2
+dropout: 0.1
+batch_size: 64
+num_steps: 10
+lr: 0.005
+num_epochs: 200
+use_gpu: True
+ffn_num_input: 32
+ffn_num_hiddens: 64
+num_heads: 4
+key_size: 32
+query_size: 32
+value_size: 32
+norm_shape: [32]

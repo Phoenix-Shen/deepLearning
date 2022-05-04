@@ -1111,6 +1111,13 @@ class PositionalEncoding(nn.Module):
     def forward(self,X):
         X = X+self.p[:,:X.shape[1],:].to(X.device)
         return self.dropout.forward(X)
+class AttentionDecoder(Decoder):
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+    
+    @property
+    def attention_weights(self):
+        raise NotImplementedError
 # CONSTANT AND LAMBDA EXPRESSIONS
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
