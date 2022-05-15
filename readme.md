@@ -30,14 +30,14 @@
 5. 现代 CNN
    - AlexNet
    - 批量归一化
-   - 层归一化
-   - 实例归一化
+   - 层归一化(自己加的)
+   - 实例归一化(自己加的)
    - VGG
    - NIN
    - GoogLeNet
    - DesneNet
    - ResNet
-   - Class Activation Mapping
+   - Class Activation Mapping(自己加的)
 6. 优化算法
    - 优化和深度学习
    - 梯度下降
@@ -65,3 +65,11 @@
    - Bahadanau Attention (没搞懂是啥玩意)
    - 多头注意力
    - 自注意力和位置编码
+
+## 参考资料
+
+[Dive into deep learning](https://zh-v2.d2l.ai/)
+
+[Pytorch 教程Youtube](https://www.youtube.com/watch?v=DbeIqrwb_dE&list=PLqnslRFeH2UrcDBWF5mfPGpqQDSta6VK4&index=3)
+
+[Pytorch 官网](https://pytorch.org/)
