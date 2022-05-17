@@ -37,12 +37,15 @@
    - GoogLeNet
    - DesneNet
    - ResNet
-   - Class Activation Mapping(自己加的)
+   - Class Activation Mapping(卷积网络中的注意力)
 6. 优化算法
    - 优化和深度学习
    - 梯度下降
    - 随机梯度下降
    - 动量法
+   - AdaGrad
+   - RMSProp
+   - Adam
 7. RNN
    - 序列模型
    - 文本预处理
@@ -58,13 +61,14 @@
    - 机器翻译和数据集
    - 编码器-解码器架构
    - 序列到序列的翻译
-9. Attention 机制
+9. Attention 机制(NLP的Attention)
    - 注意力提示
    - Nadaraya-Watson核回归
    - 注意力分数
    - Bahadanau Attention (没搞懂是啥玩意)
    - 多头注意力
    - 自注意力和位置编码
+   - Transformer(实现了两个版本)
 
 ## 参考资料
 
@@ -73,3 +77,7 @@
 [Pytorch 教程Youtube](https://www.youtube.com/watch?v=DbeIqrwb_dE&list=PLqnslRFeH2UrcDBWF5mfPGpqQDSta6VK4&index=3)
 
 [Pytorch 官网](https://pytorch.org/)
+
+[Transformer](https://wmathor.com/index.php/archives/1455/)
+
+[papers with code, 这个还是不错的，主流算法都有代码](https://paperswithcode.com/)
