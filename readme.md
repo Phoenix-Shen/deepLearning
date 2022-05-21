@@ -62,6 +62,7 @@
    - 编码器-解码器架构
    - 序列到序列的翻译
 9. Attention 机制(NLP的Attention)
+
    - 注意力提示
    - Nadaraya-Watson核回归
    - 注意力分数
@@ -69,6 +70,14 @@
    - 多头注意力
    - 自注意力和位置编码
    - Transformer(实现了两个版本)
+10. 计算机视觉ComputerVision
+    - 图像增广
+    - 微调finetuning
+    - 目标检测和边界框
+    - 锚框
+    - 多尺度目标检测
+    - 目标检测数据集
+    - 单发多框检测（SSD）
 
 ## 参考资料
 
