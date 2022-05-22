@@ -90,3 +90,7 @@
 [Transformer](https://wmathor.com/index.php/archives/1455/)
 
 [papers with code, 这个还是不错的，主流算法都有代码](https://paperswithcode.com/)
+
+[李沐的视频](https://space.bilibili.com/1567748478)
+
+[优化算法-知乎](https://zhuanlan.zhihu.com/p/201139622)
