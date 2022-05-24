@@ -1472,6 +1472,142 @@ def load_data_bananas(batch_size):
     return train_iter, val_iter
 
 
+def read_voc_images(voc_dir: str, is_train=True):
+    """读取所有的VOC图像并进行标注"""
+    # 从TXT文件中读取
+    txt_fname = os.path.join(
+        voc_dir, "ImageSets", "Segmentation", "train.txt" if is_train else "val.txt")
+    mode = tv.io.image.ImageReadMode.RGB
+
+    with open(txt_fname, "r") as f:
+        images = f.read().split()
+    features, labels = [], []
+    # 循环读取所有的图片和它们的标签
+    for i, fname in enumerate(images):
+        features.append(
+            tv.io.read_image(os.path.join(
+                voc_dir, "JPEGImages", f"{fname}.jpg"
+            ), mode)
+        )
+        labels.append(
+            tv.io.read_image(os.path.join(
+                voc_dir, "SegmentationClass", f"{fname}.png"
+            ), mode)
+        )
+    return features, labels
+
+
+# 定义颜色所代表的的类别
+VOC_COLORMAP = [[0, 0, 0], [128, 0, 0], [0, 128, 0], [128, 128, 0],
+                [0, 0, 128], [128, 0, 128], [0, 128, 128], [128, 128, 128],
+                [64, 0, 0], [192, 0, 0], [64, 128, 0], [192, 128, 0],
+                [64, 0, 128], [192, 0, 128], [64, 128, 128], [192, 128, 128],
+                [0, 64, 0], [128, 64, 0], [0, 192, 0], [128, 192, 0],
+                [0, 64, 128]]
+VOC_CLASSES = ['background', 'aeroplane', 'bicycle', 'bird', 'boat',
+               'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
+               'diningtable', 'dog', 'horse', 'motorbike', 'person',
+               'potted plant', 'sheep', 'sofa', 'train', 'tv/monitor']
+# 下面两个函数实现颜色和类别的相互映射
+
+
+def voc_colormap2label():
+    """
+    构建从RGB到VOC类别索引的映射
+    """
+    colormap2label = t.zeros(256**3, dtype=t.long)
+    for i, colormap in enumerate(VOC_COLORMAP):
+        colormap2label[
+            (colormap[0]*256+colormap[1])*256 + colormap[2]
+        ] = i
+    return colormap2label
+
+
+def voc_label_indeces(colormap: t.Tensor, colormap2label: t.Tensor):
+    """
+    将VOC标签中的RGB值映射到它们的类别索引
+    """
+    colormap = colormap.permute(1, 2, 0).numpy().astype("int32")
+    idx = ((colormap[:, :, 0]*256 + colormap[:, :, 1])*256 + colormap[:, :, 2])
+    return colormap2label[idx]
+
+
+def voc_rand_crop(feature, label, height, width):
+    """
+    随机裁剪特征和标签图像
+    """
+    rect = tv.transforms.RandomCrop.get_params(feature, (height, width))
+    feature = tv.transforms.functional.crop(feature, *rect)
+    label = tv.transforms.functional.crop(label, *rect)
+    return feature, label
+
+
+class VOCSegDataset(t.utils.data.Dataset):
+    """
+    一个用于加载VOC数据集的自定义数据集
+    """
+
+    def __init__(self, is_train, crop_size, voc_dir):
+        # 定义transform和裁剪尺寸
+        self.transform = tv.transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        self.crop_size = crop_size
+        # 读取所有训练集或者测试集的图片
+        features, labels = read_voc_images(voc_dir, is_train=is_train)
+        # 把图片进行归一化并过滤掉不符合尺寸的图片
+        self.features = [self.normalize_image(
+            feature) for feature in self.filter(features)]
+
+        self.labels = self.filter(labels)
+        self.colormap2label = voc_colormap2label()
+        print(f"read {len(self.features)} examples")
+
+    def normalize_image(self, imgs: t.Tensor):
+        """
+        将图片进行归一化,转成0-1
+        """
+        return self.transform.forward(imgs.float()/255)
+
+    def filter(self, imgs: t.Tensor):
+        """
+        去掉尺寸不符合的图片
+        """
+        return [img for img in imgs if(
+            img.shape[1] >= self.crop_size[0] and img.shape[2] >= self.crop_size[1]
+        )]
+
+    def __getitem__(self, idx: int):
+        """
+        继承自Dataset类
+        """
+        feature, label = voc_rand_crop(
+            self.features[idx], self.labels[idx], *self.crop_size)
+        return (feature, voc_label_indeces(label, self.colormap2label))
+
+    def __len__(self):
+        return len(self.features)
+
+
+def load_data_voc(voc_dir, batch_size, crop_size, num_workers=0):
+    """
+    加载VOC语义分割数据集
+    """
+    assert batch_size > 0
+    if voc_dir is None:
+        voc_dir = download_extract(
+            "voc2012", os.path.join("VoCdevkit", "VOC2012"))
+
+    train_set = VOCSegDataset(True, crop_size, voc_dir)
+    test_set = VOCSegDataset(False, crop_size, voc_dir)
+
+    train_iter = data.DataLoader(
+        train_set, batch_size, num_workers=num_workers, drop_last=True)
+    test_iter = data.DataLoader(
+        test_set, batch_size, num_workers=num_workers, drop_last=True)
+
+    return train_iter, test_iter
+
+
 # CONSTANT AND LAMBDA EXPRESSIONS
 numpy = lambda x, *args, **kwargs: x.detach().numpy(*args, **kwargs)
 size = lambda x, *args, **kwargs: x.numel(*args, **kwargs)
@@ -1486,11 +1622,19 @@ reduce_mean = lambda x, *args, **kwargs: x.mean(*args, **kwargs)
 # URL
 DATA_HUB = dict()
 DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/'
-DATA_HUB['kaggle_house_train'] = (DATA_URL + 'kaggle_house_pred_train.csv','585e9cc93e70b39160e7921475f9bcd7d31219ce')
-DATA_HUB['kaggle_house_test'] = (DATA_URL + 'kaggle_house_pred_test.csv','fa19780a7b011d9b009e8bff8e99922a8ee2eb90')
-DATA_HUB['airfoil'] = (DATA_URL + 'airfoil_self_noise.dat','76e5be1548fd8222e5074cf0faae75edff8cf93f')
-DATA_HUB['time_machine'] = (DATA_URL + 'timemachine.txt','090b5e7e70c295757f55df93cb0a180b9691891a')
-DATA_HUB['fra-eng'] = (DATA_URL + 'fra-eng.zip','94646ad1522d915e7b0f9296181140edcf86a4f5')
-DATA_HUB['hotdog'] = (DATA_URL + 'hotdog.zip','fba480ffa8aa7e0febbb511d181409f899b9baa5')
-DATA_HUB['banana-detection'] = (DATA_URL + 'banana-detection.zip','5de26c8fce5ccdea9f91267273464dc968d20d72')
-DATA_HUB['voc2012'] = (DATA_URL + 'VOCtrainval_11-May-2012.tar','4e443f8a2eca6b1dac8a6c57641b67dd40621a49')
+DATA_HUB['kaggle_house_train'] = (
+    DATA_URL + 'kaggle_house_pred_train.csv', '585e9cc93e70b39160e7921475f9bcd7d31219ce')
+DATA_HUB['kaggle_house_test'] = (
+    DATA_URL + 'kaggle_house_pred_test.csv', 'fa19780a7b011d9b009e8bff8e99922a8ee2eb90')
+DATA_HUB['airfoil'] = (DATA_URL + 'airfoil_self_noise.dat',
+                       '76e5be1548fd8222e5074cf0faae75edff8cf93f')
+DATA_HUB['time_machine'] = (
+    DATA_URL + 'timemachine.txt', '090b5e7e70c295757f55df93cb0a180b9691891a')
+DATA_HUB['fra-eng'] = (DATA_URL + 'fra-eng.zip',
+                       '94646ad1522d915e7b0f9296181140edcf86a4f5')
+DATA_HUB['hotdog'] = (DATA_URL + 'hotdog.zip',
+                      'fba480ffa8aa7e0febbb511d181409f899b9baa5')
+DATA_HUB['banana-detection'] = (DATA_URL + 'banana-detection.zip',
+                                '5de26c8fce5ccdea9f91267273464dc968d20d72')
+DATA_HUB['voc2012'] = (DATA_URL + 'VOCtrainval_11-May-2012.tar',
+                       '4e443f8a2eca6b1dac8a6c57641b67dd40621a49')
