@@ -1486,20 +1486,11 @@ reduce_mean = lambda x, *args, **kwargs: x.mean(*args, **kwargs)
 # URL
 DATA_HUB = dict()
 DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/'
-DATA_HUB['kaggle_house_train'] = (
-    DATA_URL + 'kaggle_house_pred_train.csv',
-    '585e9cc93e70b39160e7921475f9bcd7d31219ce')
-DATA_HUB['kaggle_house_test'] = (
-    DATA_URL + 'kaggle_house_pred_test.csv',
-    'fa19780a7b011d9b009e8bff8e99922a8ee2eb90')
-DATA_HUB['airfoil'] = (DATA_URL + 'airfoil_self_noise.dat',
-                       '76e5be1548fd8222e5074cf0faae75edff8cf93f')
-DATA_HUB['time_machine'] = (DATA_URL + 'timemachine.txt',
-                            '090b5e7e70c295757f55df93cb0a180b9691891a')
-DATA_HUB['fra-eng'] = (DATA_URL + 'fra-eng.zip',
-                       '94646ad1522d915e7b0f9296181140edcf86a4f5')
-DATA_HUB['hotdog'] = (DATA_URL + 'hotdog.zip',
-                      'fba480ffa8aa7e0febbb511d181409f899b9baa5')
-DATA_HUB['banana-detection'] = (
-    DATA_URL + 'banana-detection.zip',
-    '5de26c8fce5ccdea9f91267273464dc968d20d72')
+DATA_HUB['kaggle_house_train'] = (DATA_URL + 'kaggle_house_pred_train.csv','585e9cc93e70b39160e7921475f9bcd7d31219ce')
+DATA_HUB['kaggle_house_test'] = (DATA_URL + 'kaggle_house_pred_test.csv','fa19780a7b011d9b009e8bff8e99922a8ee2eb90')
+DATA_HUB['airfoil'] = (DATA_URL + 'airfoil_self_noise.dat','76e5be1548fd8222e5074cf0faae75edff8cf93f')
+DATA_HUB['time_machine'] = (DATA_URL + 'timemachine.txt','090b5e7e70c295757f55df93cb0a180b9691891a')
+DATA_HUB['fra-eng'] = (DATA_URL + 'fra-eng.zip','94646ad1522d915e7b0f9296181140edcf86a4f5')
+DATA_HUB['hotdog'] = (DATA_URL + 'hotdog.zip','fba480ffa8aa7e0febbb511d181409f899b9baa5')
+DATA_HUB['banana-detection'] = (DATA_URL + 'banana-detection.zip','5de26c8fce5ccdea9f91267273464dc968d20d72')
+DATA_HUB['voc2012'] = (DATA_URL + 'VOCtrainval_11-May-2012.tar','4e443f8a2eca6b1dac8a6c57641b67dd40621a49')
