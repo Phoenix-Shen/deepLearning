@@ -6,3 +6,5 @@
 - 目标检测 (object detection)
 - 语义分割 (semantic segmentation)
 - 样式迁移（image-to-image translation, style transfer)
+
+至于风格迁移，可以看我的GitHub，里面有个U-GAT-IT的模型。
