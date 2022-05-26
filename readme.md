@@ -66,7 +66,7 @@
    - 注意力提示
    - Nadaraya-Watson核回归
    - 注意力分数
-   - Bahadanau Attention (没搞懂是啥玩意)
+   - Bahadanau Attention
    - 多头注意力
    - 自注意力和位置编码
    - Transformer(实现了两个版本)
@@ -80,6 +80,10 @@
     - 目标检测数据集
     - 单发多框检测（SSD）
     - R-CNN(区域卷积神经网络)
+    - 语义分割
+    - 转置卷积
+    - 全卷积网络
+    - 风格迁移和图像翻译
 
 ## 参考资料
 
