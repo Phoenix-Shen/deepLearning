@@ -187,8 +187,8 @@ def cls_eval(cls_preds: Tensor, cls_labels: Tensor):
     预测类别的准确度
     """
     results = (cls_preds.argmax(
-        dim=-1).type_as(cls_labels.dtype) == cls_labels).sum()
-    return float(results)
+        dim=-1).type(cls_labels.dtype) == cls_labels).sum()
+    return float(results)/cls_preds.shape[0]/cls_preds.shape[1]
 
 
 def bbox_eval(bbox_preds: Tensor, bbox_labels: Tensor, bbox_masks: Tensor):
@@ -196,7 +196,7 @@ def bbox_eval(bbox_preds: Tensor, bbox_labels: Tensor, bbox_masks: Tensor):
     预测锚框与边界框的偏移
     """
     results = (t.abs((bbox_preds-bbox_labels)*bbox_masks)).sum()
-    return float(results)
+    return float(results)/bbox_preds.shape[0]/bbox_preds.shape[1]
 
 
 # %% TEST1

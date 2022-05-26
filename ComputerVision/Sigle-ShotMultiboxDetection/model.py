@@ -194,7 +194,7 @@ class SigleShotMultiboxDetection():
                 l.mean().backward()
                 self.optimizer.step()
 
-            print(f"ep[{epoch}/{self.num_epochs}], loss:{l.item()},bbox_MAE:{bbox_eval(bbox_preds,bbox_labels,bbox_masks)},cls_ACC:{cls_eval(cls_preds,cls_labels)}")
+            print(f"ep[{epoch}/{self.num_epochs}], loss:{l.mean().item()},bbox_MAE:{bbox_eval(bbox_preds,bbox_labels,bbox_masks)},cls_ACC:{cls_eval(cls_preds,cls_labels)}")
 
 
 # %% TEST
