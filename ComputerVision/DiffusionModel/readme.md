@@ -303,7 +303,7 @@ $x_0$是目标分布，$x_T$是噪声分布，从右到左是熵增的过程，�
     这样，我们的网络的输入就是$（x_0,t）$，输出就是第$t$步高斯噪声的预测
     完全可以去掉前面那一坨分数得到简化形式：
     $$
-    L_{simple}(\theta)\mathbb{E}_{x_0,\epsilon}\left[\vert\vert \epsilon - \epsilon_\theta(\sqrt{\bar{a}_t}x_0 + \sqrt{1-\bar{a}_t}\epsilon,t)\vert\vert^2\right]
+    L_{simple}(\theta)=\mathbb{E}_{x_0,\epsilon}\left[\vert\vert \epsilon - \epsilon_\theta(\sqrt{\bar{a}_t}x_0 + \sqrt{1-\bar{a}_t}\epsilon,t)\vert\vert^2\right]
     $$
 
     我们终于得到了优化的目标！可喜可贺。
