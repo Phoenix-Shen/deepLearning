@@ -2,15 +2,26 @@
 
 ## 介绍
 
-[原书地址在此](https://zh-v2.d2l.ai/)
+   [原书地址在此](https://zh-v2.d2l.ai/)
 
-*Dive Into Deep Learning* 的学习代码以及笔记，原本是在我的强化学习仓库里头的，结果发现太多了，便独立出来。
+   *Dive Into Deep Learning* 的学习代码以及笔记，原本是在我的强化学习仓库里头的，结果发现太多了，便独立出来。
 
-2022-12-22更新：
+- 之前更新的内容：
 
-发现有些东西这书里面没有，我自己又加了一些内容，比如Difffusion model和Transformer的其它完整代码版本。
+  - 各种normlization
+  - class activation mapping
 
-以后还有一些新的东西的话，都会加到这里面来。
+- 2022-12-22更新：
+
+   发现有些东西这书里面没有，我自己又加了一些内容，比如Difffusion model和Transformer的其它完整代码版本。
+
+   以后还有一些新的东西的话，都会加到这里面来。
+
+  - 加入Difffusion model
+
+- 2022-12-25更新：
+
+  - 联邦学习（FL）
 
 ## 包含内容
 
