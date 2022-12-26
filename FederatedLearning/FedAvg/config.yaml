@@ -6,7 +6,7 @@ batch_size: 256
 in_channels: 1
 num_classes: 10
 num_users: 100
-iid: True
+iid: False
 log_dir: "./FederatedLearning/FedAvg/logs"
 fraction: 0.1
 epoch: 100

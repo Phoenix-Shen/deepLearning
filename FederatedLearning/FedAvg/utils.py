@@ -109,7 +109,7 @@ def mnist_noniid(dataset: data.Dataset, num_users: int) -> dict:
 
     idxs = np.arange(num_shards*num_imgs)
 
-    labels = dataset.train_labels.numpy()
+    labels = dataset.targets.numpy()
 
     # sort labels to ensure non-iid
     idx_labels = np.vstack((idxs, labels))
@@ -119,7 +119,8 @@ def mnist_noniid(dataset: data.Dataset, num_users: int) -> dict:
 
     # divide and assign
     for i in range(num_users):
-        rand_set = set(np.random.choice(idx_shard, 2, replace=False))
+        rand_set = set(np.random.choice(
+            idx_shard, num_shards/num_users, replace=False))
         idx_shard = list(set(idx_shard)-rand_set)
         # concat
         for rand in rand_set:
