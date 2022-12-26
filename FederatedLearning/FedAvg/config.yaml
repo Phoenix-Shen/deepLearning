@@ -1,0 +1,13 @@
+# training settings
+device: cuda
+lr: 0.01
+weight_decay: 0.0
+batch_size: 256
+in_channels: 1
+num_classes: 10
+num_users: 100
+iid: True
+log_dir: "./FederatedLearning/FedAvg/logs"
+fraction: 1
+epoch: 100
+local_epochs: 5

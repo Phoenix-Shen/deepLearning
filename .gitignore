@@ -4,3 +4,7 @@
 /dataset/
 # tensorboard logs
 **/logs/
+# vscode config
+.vscode/
+# data
+FederatedLearning/FedAvg/data/
