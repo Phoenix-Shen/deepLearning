@@ -8,6 +8,6 @@ num_classes: 10
 num_users: 100
 iid: True
 log_dir: "./FederatedLearning/FedAvg/logs"
-fraction: 1
+fraction: 0.1
 epoch: 100
 local_epochs: 5

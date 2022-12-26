@@ -131,6 +131,7 @@ class FedAvg(object):
             for idx_usr in idx_users:
                 self.local_nets[idx_usr].train()
             self.aggregate(idx_users)
+            self.send_parameters()
             acc, loss = self.eval(self.testloader)
             print("ep:{},acc_test:{},loss_test:{}".format(ep, acc, loss))
 
