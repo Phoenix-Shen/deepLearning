@@ -57,18 +57,23 @@ class FedAvg(object):
         # dataloaders for each usr
         self.data_loaders, self.testloader = load_mnist(
             args["iid"], args["num_users"], args["batch_size"])
+        # local models
         self.local_nets = [LocalModel(
             idx=i,
             args=args,
             net=CNNMnist(args["in_channels"], args["num_classes"]),
             dataLoader=self.data_loaders[i]
         ) for i in range(args["num_users"])]
+        # save configuration
         self.args = args
         self.device = t.device("cuda" if t.cuda.is_available(
         ) and args["device"] == "cuda" else "cpu")
         self.global_net.to(self.device)
+        # summary writer
         self.writer = SummaryWriter(log_dir=os.path.join(
             args["log_dir"], "global_test_loss"))
+        # add AOI(age of information)
+        self.aoi = np.zeros((args["num_users"]), dtype=np.int64)
 
     def send_parameters(self):
         """
@@ -97,7 +102,6 @@ class FedAvg(object):
         """
         self.global_net.eval()
         correct = 0
-        total = 0
         test_loss = 0
         with t.no_grad():
             for data in dataloader:
@@ -120,20 +124,45 @@ class FedAvg(object):
         """
         start the training procedre
         """
-
-        avg_usr_num = int(self.args["fraction"]*self.args["num_users"])
-        assert avg_usr_num >= 1
-
         for ep in tqdm(range(self.args["epoch"])):
+            # switch to train mode
             self.global_net.train()
-            idx_users = np.random.choice(
-                range(self.args["num_users"]), avg_usr_num, replace=False)
+            # choose users for training
+            idx_users = self.choose_users()
             for idx_usr in idx_users:
                 self.local_nets[idx_usr].train()
+            # perform aggrate opeartion
             self.aggregate(idx_users)
+            # send parameters to all local models
             self.send_parameters()
+            # switch to evaluation mode
             acc, loss = self.eval(self.testloader)
-            print("ep:{},acc_test:{},loss_test:{}".format(ep, acc, loss))
+            print("\rep:{},acc_test:{},loss_test:{}".format(ep, acc, loss), end="")
+
+    def choose_users(self):
+        """
+        choose users to train the model
+        """
+        # get the user number for fedavg
+        avg_usr_num = int(self.args["fraction"]*self.args["num_users"])
+        assert avg_usr_num >= 1
+        # 3 strategies
+        if self.args["fed_strategy"] == "rand":
+
+            idx_users = np.random.choice(
+                range(self.args["num_users"]), avg_usr_num,
+                replace=False)
+        elif self.args["fed_strategy"] == "aoi-biggest":
+            # asending order
+            idx_users = np.argsort(self.aoi)[-avg_usr_num:]
+        elif self.args["fed_strategy"] == "aoi-smallest":
+            # asending order
+            idx_users = np.argsort(self.aoi)[:avg_usr_num]
+
+        # update aoi
+        self.aoi += 1
+        self.aoi[idx_users] = 0
+        return idx_users
 
 
 class LocalModel(object):

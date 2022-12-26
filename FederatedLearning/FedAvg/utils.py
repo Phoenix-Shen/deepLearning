@@ -120,7 +120,7 @@ def mnist_noniid(dataset: data.Dataset, num_users: int) -> dict:
     # divide and assign
     for i in range(num_users):
         rand_set = set(np.random.choice(
-            idx_shard, num_shards/num_users, replace=False))
+            idx_shard, int(num_shards/num_users), replace=False))
         idx_shard = list(set(idx_shard)-rand_set)
         # concat
         for rand in rand_set:
