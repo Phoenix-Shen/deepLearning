@@ -8,6 +8,7 @@ from utils import load_mnist
 import copy
 import torch.nn.functional as F
 from tqdm import tqdm
+import time
 
 
 class CNNMnist(nn.Module):
@@ -52,6 +53,8 @@ class CNNCifar(nn.Module):
 
 class FedAvg(object):
     def __init__(self, args: dict):
+        # modify the log dir
+        args["log_dir"] = os.path.join(args["log_dir"], str(int(time.time())))
         # globale_net
         self.global_net = CNNMnist(args["in_channels"], args["num_classes"])
         # dataloaders for each usr
@@ -124,7 +127,7 @@ class FedAvg(object):
         """
         start the training procedre
         """
-        for ep in tqdm(range(self.args["epoch"])):
+        for ep in range(self.args["epoch"]):
             # switch to train mode
             self.global_net.train()
             # choose users for training
@@ -137,6 +140,9 @@ class FedAvg(object):
             self.send_parameters()
             # switch to evaluation mode
             acc, loss = self.eval(self.testloader)
+            # add log
+            self.writer.add_scalar("loss", loss, ep)
+            self.writer.add_scalar("accuracy", acc, ep)
             print("\rep:{},acc_test:{},loss_test:{}".format(ep, acc, loss), end="")
 
     def choose_users(self):

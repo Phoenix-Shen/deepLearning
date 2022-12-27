@@ -127,19 +127,19 @@ $x_0$是目标分布，$x_T$是噪声分布，从右到左是熵增的过程，�
 
 ## Diffusion 扩散过程（正向）
 
-- 正向过程中不含参数
-- 给定初始数据分布$x_0 \sim q(x)$，我们往里面不断地添加高斯噪声，标准差是一个定值$\beta_t$，均值是$\beta_t$和当前的数据$x_t$决定的，这个过程是一个马尔科夫链。
-- 随着$t$的不断增大，我们的最终分布$x_T$变成了一个各项独立的高斯分布。
+- 正向过程中**不含可训练参数**
+- 给定初始数据分布$x_0 \sim q(x)$，我们往里面不断地添加高斯噪声，标准差是一个定值$\beta_t$，均值是$\beta_t$和当前的数据$x_t$决定的，这个过程是一个**马尔科夫链**。
+- 随着$t$的不断增大，我们的最终分布$x_T$变成了一个**各项独立的高斯分布**。
     $$
     q(x_t \vert x_{t-1}) = \mathcal{N}(x_t ; \sqrt{1-\beta_t} x_{t-1},\beta_t \mathbf{I})\\
     q(x_{1:T} \vert x_0)= \prod_{t=1}^Tq(x_t \vert x_{t-1})
     $$
 
-    其中$\{\beta_t \in (0,1)\}_{t=1}^T$，可以看到$x_t$只与上一时刻有关，因为它是上一次的x价格噪声得来的。
+    其中$\{\beta_t \in (0,1)\}_{t=1}^T$，可以看到$x_t$只与上一时刻有关，因为它是上一次的x加个噪声得来的。
 
-    $\beta_t,T$都是超参数，正向过程中不包含参数
+    $\beta_t,T$都是超参数，正向过程中不包含可训练参数
 
-    当$T\to \infty$的时候，$x_T$就是一个各项独立的高斯分布（Isotropic）
+    当$T\to \infty$的时候，$x_T$就是一个各项独立的高斯分布（**Isotropic**）
 - 任意时刻的$q(x_t)$是可以推导出来的，不需要进行迭代计算
 
     令$ \alpha_t = 1-\beta_t,\bar{\alpha}_t = \prod_{i=1}^T \alpha_i$
@@ -173,6 +173,12 @@ $x_0$是目标分布，$x_T$是噪声分布，从右到左是熵增的过程，�
     $$
     p_\theta(x_{0:T}) = p(x_T) \prod_{t=1}^T p_\theta(x_{t-1} \vert x_t) \\
     p_\theta(x_{t-1} \vert x_t)=\mathcal{N}(x_{t-1}; \mu_\theta(x_t,t),\sigma_\theta(x_t,t))
+    $$
+
+- 在实验中，作者将方差$\sigma_\theta(x_t,t)$设置为常量，即：
+    $$
+    \sigma_\theta(x_t,t) = \sigma_t^2 \mathbf{I}\\
+    \sigma_t^2 = \tilde{\beta}_t =1/(\frac{\alpha_t}{\beta_t} + \frac{1}{1-\bar{\alpha}_{t-1}})= \frac{1-\bar{\alpha}_{t-1}}{1-\bar{\alpha}_t}\cdot \beta_t
     $$
 
 - 扩散的后验概率分布是可以用公式来计算的-$q(x_{t-1}\vert x_t , x_0)$
