@@ -13,3 +13,7 @@
 ## 具体实现
 
 在这个文件夹中，我们仅仅实现**最基础的FedAvg算法**。
+
+## bug
+
+我发现tensorboard+vscode有个bug，关掉vscode tensorboard不会退出，解决办法参考这个网站(<https://blog.csdn.net/Yonggie/article/details/119922972>)

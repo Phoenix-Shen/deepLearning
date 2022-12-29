@@ -1,0 +1,14 @@
+# training settings
+device: cuda #support cuda or cpu
+lr: 0.01
+weight_decay: 0.0
+batch_size: 256
+in_channels: 1
+num_classes: 10
+num_users: 100
+iid: True # True of false
+log_dir: "./FederatedLearning/FedAvg/logs"
+fraction: 0.1 # ratio of the users in the avg procedure
+epoch: 100
+local_epochs: 5
+fed_strategy: aoi-smallest #support rand, aoi-biggest, aoi-smallest

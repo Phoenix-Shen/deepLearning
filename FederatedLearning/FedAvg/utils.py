@@ -36,7 +36,7 @@ def load_mnist(iid: bool, num_users: int, batch_size: int):
     list[DataLoader]:
         the dataloader of the all users
     Dataset
-        the test dataset
+        the whole train and test dataset
     """
     trans_mnist = tv.transforms.Compose(
         [tv.transforms.ToTensor(), tv.transforms.Normalize((0.1307,), (0.3081,))])
@@ -55,8 +55,9 @@ def load_mnist(iid: bool, num_users: int, batch_size: int):
     dataloader_allusr = [DataLoader(
         datasets_allusr[i], batch_size, shuffle=True) for i in range(num_users)]
     test_loader = DataLoader(dataset_test, batch_size, shuffle=False)
+    train_loader = DataLoader(dataset_train, batch_size, shuffle=False)
 
-    return dataloader_allusr, test_loader
+    return dataloader_allusr, train_loader, test_loader
 
 
 def mnist_iid(dataset: data.Dataset, num_users: int) -> dict:

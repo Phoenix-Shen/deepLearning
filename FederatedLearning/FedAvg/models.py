@@ -58,7 +58,7 @@ class FedAvg(object):
         # globale_net
         self.global_net = CNNMnist(args["in_channels"], args["num_classes"])
         # dataloaders for each usr
-        self.data_loaders, self.testloader = load_mnist(
+        self.data_loaders, self.train_loader, self.testloader = load_mnist(
             args["iid"], args["num_users"], args["batch_size"])
         # local models
         self.local_nets = [LocalModel(
@@ -78,12 +78,12 @@ class FedAvg(object):
         # add AOI(age of information)
         self.aoi = np.zeros((args["num_users"]), dtype=np.int64)
 
-    def send_parameters(self):
+    def send_parameters(self, usr_idxs: list[int]):
         """
-        send the global parameters to all local models.
+        send the global parameters to specified local models.
         """
         [self.local_nets[i].net.load_state_dict(
-            self.global_net.state_dict()) for i in range(self.args["num_users"])]
+            self.global_net.state_dict()) for i in usr_idxs]
 
     def aggregate(self, usr_idxs: list[int]):
         """
@@ -132,18 +132,23 @@ class FedAvg(object):
             self.global_net.train()
             # choose users for training
             idx_users = self.choose_users()
+            # send parameters to all local models
+            self.send_parameters(idx_users)
             for idx_usr in idx_users:
                 self.local_nets[idx_usr].train()
             # perform aggrate opeartion
             self.aggregate(idx_users)
-            # send parameters to all local models
-            self.send_parameters()
             # switch to evaluation mode
-            acc, loss = self.eval(self.testloader)
+            acc_test, loss_test = self.eval(self.testloader)
+            acc_train, loss_train = self.eval(self.train_loader)
             # add log
-            self.writer.add_scalar("loss", loss, ep)
-            self.writer.add_scalar("accuracy", acc, ep)
-            print("\rep:{},acc_test:{},loss_test:{}".format(ep, acc, loss), end="")
+            self.writer.add_scalar("loss_test", loss_test, ep)
+            self.writer.add_scalar("accuracy_test", acc_test, ep)
+            self.writer.add_scalar("loss_train", loss_train, ep)
+            self.writer.add_scalar("accuracy_train", acc_train, ep)
+
+            print("ep:{},acc_test:{},loss_test:{},acc_train:{},loss_train:{}".format(
+                ep, acc_test, loss_test, acc_train, loss_train))
 
     def choose_users(self):
         """
