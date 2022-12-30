@@ -102,6 +102,51 @@
     - 全卷积网络
     - 风格迁移和图像翻译
 
+## 杂谈&经验
+
+### 问题
+
+- tensorboard+vscode有个bug，关掉vscode tensorboard不会退出，解决办法参考[这个网站](https://blog.csdn.net/Yonggie/article/details/119922972)
+
+### 关于Pytorch，摘自[这里](https://www.bilibili.com/video/BV1xW4y1M7JH/?spm_id_from=333.880.my_history.page.click&vd_source=8a3baf666bc9210627c288b6ec6d567a)
+
+- [fastai](https://www.fast.ai/)
+- 学习率可以采用周期性学习率例如one cycle实现巨大的加速
+
+   ```python
+   scheduler=torch.optim.lr_scheduler.OneCycleLR()
+   ```
+
+- 使用AdamW优化器
+- 通常情况下使用硬件允许的最大的batch_size是有助于加速的，但是修改了batch_size我们对应的lr也需要增加，batch_size加倍的时候lr也需要加倍
+- Dataloader的num_worker设置为GPU数量的4倍，如果硬件性能很好，pin_memory设置为True会增加数据加载至GPU的速度
+- 使用AMP(automatic mixed precision)自动混合精度进行训练，能够训练更快
+- 如果模型输入大小不变而且结构固定，可以使用torch.backends.cudnn.benchmark=True,可以自动选择最优的卷积算法，更快
+- 分布式训练可以使用DataParallel和DistributedDataParallel，pytorch更推荐后者
+- 使用梯度累加，这也是增加batch的一种方法
+- 验证阶段使用torch.no_grad()
+- 可以使用torch.nn.utils.clip_grad_norm_进行梯度裁剪，对Transformer和resnet很有用
+- BatchNorm2d之前的卷积层不需要增加bias，因为BatchNorm2d将数据归一化至标准化分布，使用bias会改变数据分布，降低效率
+- 不要频繁使用tensor.cpu(),tensor.cuda()，在转换np.ndarray的时候，我们尽量使用torch.as_tensor(np.ndarray)或者torch.from_numpy(np.ndarray)
+- 传输列表类型的参数的时候，为了避免参数被改变，要使用copy或者deepcopy
+- 使用默认参数的时候要注意参数在编译的时候就进行初始化了,需要将默认参数设置为None从而避免错误结果。
+
+  ```python
+   # 正确的
+   def display_time(data=None):
+      if data is None:
+         data = datetime.now()
+      print(data)
+   print(display_time.__defaults__)#(是一个定值,)
+   # 错误的
+   def display_time(data=datetime.now()):
+      print(data)
+      
+   print(display_time.__defaults__)#(None,)
+  ```
+
+- 使用logging会帮助debug
+
 ## 参考资料
 
 [Dive into deep learning](https://zh-v2.d2l.ai/)
