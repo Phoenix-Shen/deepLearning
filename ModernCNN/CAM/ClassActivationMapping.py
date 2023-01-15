@@ -19,8 +19,8 @@ import cv2
 import json
 
 # input image
-LABELS_file = r'PytorchAndPythonLearning\Pytorch\ModernCNN\CAM\imagenet-simple-labels.json'
-image_file = r"PytorchAndPythonLearning\Pytorch\ModernCNN\CAM\test.jpg"
+LABELS_file = r'ModernCNN\CAM\imagenet-simple-labels.json'
+image_file = r"C:\Users\shiku\Desktop\test.jpg"
 
 # networks such as googlenet, resnet, densenet already use global average pooling at the end, so CAM could be used directly.
 model_id = 2
@@ -123,4 +123,4 @@ heatmap = cv2.applyColorMap(cv2.resize(
     CAMs[0], (width, height)), cv2.COLORMAP_JET)
 result = heatmap * 0.3 + img * 0.5
 cv2.imwrite(
-    r'.\PytorchAndPythonLearning\Pytorch\ModernCNN\CAM\CAM_result.jpg', result)
+    r'ModernCNN\CAM\CAM_result.jpg', result)

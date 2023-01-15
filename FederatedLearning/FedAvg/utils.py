@@ -128,3 +128,7 @@ def mnist_noniid(dataset: data.Dataset, num_users: int) -> dict:
             dict_users[i] = np.concatenate(
                 (dict_users[i], idxs[rand*num_imgs:(rand+1)*num_imgs]), axis=0)
     return dict_users
+
+
+def load_cifar(iid: bool, num_users: int, batch_size: int):
+    pass
