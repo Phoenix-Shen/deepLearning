@@ -8,3 +8,4 @@
 .vscode/
 # data
 FederatedLearning/FedAvg/data/
+Attention/VisionTransformer/tiny-imagenet-200

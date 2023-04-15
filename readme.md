@@ -11,6 +11,9 @@
   - 各种normlization
   - class activation mapping
 
+- 2023-04-15更新：
+  VIT及其在tiny-imagenet上面的微调
+
 - 2022-12-22更新：
 
    发现有些东西这书里面没有，我自己又加了一些内容，比如Difffusion model和Transformer的其它完整代码版本。
@@ -79,7 +82,6 @@
    - 编码器-解码器架构
    - 序列到序列的翻译
 9. Attention 机制(NLP的Attention)
-
    - 注意力提示
    - Nadaraya-Watson核回归
    - 注意力分数
@@ -87,6 +89,7 @@
    - 多头注意力
    - 自注意力和位置编码
    - Transformer(实现了两个版本)
+   - VisionTransformer（VIT）
 10. 计算机视觉ComputerVision
 
     - 图像增广
