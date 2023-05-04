@@ -150,6 +150,74 @@
 
 - 使用logging会帮助debug
 
+### 训练模型时候的一些常见手段
+
+#### Data Augmentation
+
+- 基本上都能在`torchvision.transforms`下面找到，下面介绍几种，核心思想就是防止模型“记图”，防止过拟合，并提升模型泛化性
+- Normalize
+  我们看到的`(0.485, 0.456, 0.406)`和`(0.229, 0.224, 0.225)`便是imageNet数据集三通道每个通道的mean和std，在这里，要将图像每个通道减去mean除以std来实现归一化
+- ToTensor
+  十分常见，将[H,W,C]维度转化成[C,H,W]维度
+- Resize
+  重新缩放大小
+- RandomCrop
+  随机裁剪
+- RandomHorizontalFlip&RandomVerticalFlip
+  随机水平、垂直翻转
+- ColorJitter
+  随机改变图像的亮度、对比度，饱和度和色调
+- RandomErasing
+  随机擦除图像的内容
+- [MixUp&CutMix](https://timm.fast.ai/mixup_cutmix)
+  将两张照片融合成一张，具体点进去链接就可以看到例子
+
+#### Prevent Overfitting & stablize the training process
+
+- Weight Decay
+  将权重的模长作为损失的一部分，有效防止过拟合，可以在我的[这个IPYNB](./MLP/weightDecay.ipynb)中看到
+- Model EMA (exponential moving average)
+  是timm库中的，目前的VisionTransformer都集成了这个东西，保持一个running mean，对于$W_t$模型参数来说，running mean为$\bar{W}_t = \gamma W_t + (1-\gamma)\bar{W}_{t-1}$，$\gamma$一般取0.01,0.0001等
+- [Learning Rate Scheduler](https://towardsdatascience.com/a-visual-guide-to-learning-rate-schedulers-in-pytorch-24bbb262c863)
+  根据训练的步长（step）自动调整学习率，能让模型收敛的更快，有线性的，余弦的，指数的等等，每种都有自己的好处和坏处
+- Loss Function
+  - LabelSmoothingCrossEntropy
+  - SoftTargetCrossEntropy
+  在数据标签有错误的时候，可以减少模型的错误率
+- AdamW optimizer
+  相比于Adam优化器，他俩的Weight Decay方法不一样
+
+  ```python
+  # Ist: Adam weight decay implementation (L2 regularization)
+   final_loss = loss + wd *all_weights.pow(2).sum() / 2
+  # IInd: AdamW
+   w = w - lr* w.grad - lr *wd* w
+  ```
+
+- Gradient Clipping
+   防止梯度爆炸，在Transformer和一些RNN中很常见
+
+#### Training Acceleration
+
+- Auto Mixed Precision
+  `torch.autocast`，我们有时候会看到这种代码，这就是自动转换精度，将某些tensor转换成低精度来实现加速
+- Model Distillation
+  模型蒸馏，在DeiT(data efficient ViT)中使用到了
+- Pin Memory
+- CuDNN Benchmark
+  `torch.backend.cudnn.benchmark=True`，我们有时候会看到，这个是使用cuDNN库去加速卷积操作
+- Deepspeed
+  快速分布式训练，还没有富到能分布式训练，暂时放这里
+
+#### Logging
+
+- wandb.ai (wandb means `weight and bias`)
+  weight and bias，可以传到网页中，随时查看，炸了就可以发邮件提醒你
+- Tensorboard (now integrated in `torch.utils`)
+  这个也不错
+- Visdom
+  这个也还行
+
 ## 参考资料
 
 [Dive into deep learning](https://zh-v2.d2l.ai/)
@@ -165,3 +233,5 @@
 [李沐的视频](https://space.bilibili.com/1567748478)
 
 [优化算法-知乎](https://zhuanlan.zhihu.com/p/201139622)
+
+[Pytorch Image Models(timm) 库](https://timm.fast.ai/)
